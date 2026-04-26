@@ -24,8 +24,8 @@ class APIRateLimiter(Star):
         if not quiet_start or not quiet_end:
             return None
         try:
-            start = self._parse_time(quiet_start)
-            end = self._parse_time(quiet_end)
+            start = self._parse_time(quiet_start, "quiet_start")
+            end = self._parse_time(quiet_end, "quiet_end")
             if start == end:
                 logger.warning("[API限频器] 安静时段开始与结束时间相同，视为未启用")
                 return None
@@ -42,18 +42,26 @@ class APIRateLimiter(Star):
         if ":" in time_str:
             parts = time_str.split(":")
             if len(parts) != 2:
-                raise ValueError(f"格式错误: '{time_str}'，期望 HH:MM 或纯分钟数")
+                raise ValueError(
+                    f"字段 '{field_name}' 格式错误: '{time_str}'，期望 HH:MM 或纯分钟数"
+                )
             try:
                 total = int(parts[0]) * 60 + int(parts[1])
             except ValueError:
-                raise ValueError(f"格式错误: '{time_str}'，小时和分钟必须是整数")
+                raise ValueError(
+                    f"字段 '{field_name}' 格式错误: '{time_str}'，小时和分钟必须是整数"
+                )
         else:
             try:
                 total = int(time_str)
             except ValueError:
-                raise ValueError(f"格式错误: '{time_str}'，必须是整数")
+                raise ValueError(
+                    f"字段 '{field_name}' 格式错误: '{time_str}'，必须是整数"
+                )
         if total < 0 or total > 1439:
-            raise ValueError(f"时间值 {total} 超出范围 (0-1439)")
+            raise ValueError(
+                f"字段 '{field_name}' 时间值 {total} 超出范围 (0-1439)"
+            )
         return total
 
     def _is_in_quiet_hours(self):
@@ -80,45 +88,52 @@ class APIRateLimiter(Star):
         try:
             value = int(value)
         except (ValueError, TypeError):
-            logger.warning(f"[API限频器] 配置项 '{key}' 值无效（{value}），使用默认值 {default}")
+            logger.warning(
+                f"[API限频器] 配置项 '{key}' 值无效（{value}），使用默认值 {default}"
+            )
             return default
         if value < 0:
-            logger.warning(f"[API限频器] 配置项 '{key}' 为负值（{value}），已修正为 0")
+            logger.warning(
+                f"[API限频器] 配置项 '{key}' 为负值（{value}），已修正为 0"
+            )
             return 0
         return value
 
     @filter.on_llm_request()
     async def handle_llm_request(self, event: AstrMessageEvent):
-        async with self._lock:
-            # 功能一：安静时段 - 屏蔽API调用
-            if self._is_in_quiet_hours():
-                quiet_start = self.config.get("quiet_start", "")
-                quiet_end = self.config.get("quiet_end", "")
+        # 功能一：安静时段 - 屏蔽API调用（无需锁，只读操作）
+        if self._is_in_quiet_hours():
+            quiet_start = self.config.get("quiet_start", "")
+            quiet_end = self.config.get("quiet_end", "")
+            logger.info(
+                f"[API限频器] 当前处于安静时段 "
+                f"({quiet_start} - {quiet_end})，已屏蔽API调用"
+            )
+            event.stop_event()
+            return
+
+        # 功能二：冷却期检查（无需锁，只读操作）
+        if self._is_in_cooldown():
+            remain = self.cooldown_until - time.time()
+            logger.info(f"[API限频器] 冷却中，剩余 {remain:.0f} 秒")
+            event.stop_event()
+            return
+
+        # 功能三：调用间隔限制 - 先在锁外计算等待时间
+        cooldown_seconds = self._safe_get_int("cooldown_seconds", 3)
+        if cooldown_seconds > 0:
+            async with self._lock:
+                elapsed = time.time() - self.last_call_time
+            if elapsed < cooldown_seconds:
+                wait_time = cooldown_seconds - elapsed
                 logger.info(
-                    f"[API限频器] 当前处于安静时段 "
-                    f"({quiet_start} - {quiet_end})，已屏蔽API调用"
+                    f"[API限频器] 调用间隔限制：需等待 {wait_time:.2f} 秒"
                 )
-                event.stop_event()
-                return
+                # 在锁外睡眠，不阻塞其他请求
+                await asyncio.sleep(wait_time)
 
-            # 功能二：冷却期检查 - 次数用完后等待恢复
-            if self._is_in_cooldown():
-                remain = self.cooldown_until - time.time()
-                logger.info(f"[API限频器] 冷却中，剩余 {remain:.0f} 秒")
-                event.stop_event()
-                return
-
-            # 功能三：调用间隔限制 - 每次API调用前最小间隔
-            cooldown_seconds = self._safe_get_int("cooldown_seconds", 3)
-            if cooldown_seconds > 0:
-                now = time.time()
-                elapsed = now - self.last_call_time
-                if elapsed < cooldown_seconds:
-                    wait_time = cooldown_seconds - elapsed
-                    logger.info(f"[API限频器] 调用间隔限制：需等待 {wait_time:.2f} 秒")
-                    await asyncio.sleep(wait_time)
-
-            # 更新调用时间与计数
+        # 更新调用时间与计数（锁内保护状态修改）
+        async with self._lock:
             self.last_call_time = time.time()
             self.call_count += 1
 

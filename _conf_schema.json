@@ -24,12 +24,14 @@
     "description": "安静时段开始时间",
     "type": "string",
     "hint": "格式为 HH:MM（如 23:00）或纯分钟数（如 1380）。在此时间后机器人将不再调用API。留空则不启用安静时段。",
-    "default": ""
+    "default": "",
+    "pattern": "^(\\d{1,4}|\\d{1,2}:\\d{2})$"
   },
   "quiet_end": {
     "description": "安静时段结束时间",
     "type": "string",
     "hint": "格式为 HH:MM（如 07:00）或纯分钟数（如 420）。在此时间后机器人恢复正常API调用。留空则不启用安静时段。",
-    "default": ""
+    "default": "",
+    "pattern": "^(\\d{1,4}|\\d{1,2}:\\d{2})$"
   }
 }

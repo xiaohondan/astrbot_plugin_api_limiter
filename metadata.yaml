@@ -1,10 +1,6 @@
 name: astrbot_plugin_api_rate_limiter
 display_name: API调用限频器
-description: |
-  多功能API调用管理插件，包含三大功能：
-  1. 调用间隔限制：每次API调用前强制等待冷却时间
-  2. 次数限制+冷却重开：发送指定条消息后暂停，等待一段时间后自动恢复
-  3. 安静时段：设置禁用时间段，防止机器人半夜扰民
+description: 多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断三大功能
 version: 1.0.0
 author: 小红蛋
 repo: https://github.com/xiaohondan/astrbot_plugin_api_rate_limiter
