@@ -1,6 +1,5 @@
 import asyncio
 import time
-from typing import Optional, Tuple
 from datetime import datetime
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
@@ -25,30 +24,22 @@ class APIRateLimiter(Star):
         self.call_count: int = 0
         self.cooldown_until: float = 0.0
         self._lock = asyncio.Lock()
-        self._quiet_hours_cache: Optional[Tuple[int, int]] = None
 
-    def _get_quiet_hours(self) -> Optional[Tuple[int, int]]:
-        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None，带缓存"""
-        if self._quiet_hours_cache is not None:
-            return self._quiet_hours_cache
-
+    def _get_quiet_hours(self) -> tuple[int, int] | None:
+        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None"""
         quiet_start: str = self.config.get("quiet_start", "")
         quiet_end: str = self.config.get("quiet_end", "")
         if not quiet_start or not quiet_end:
-            self._quiet_hours_cache = None
             return None
         try:
             start: int = self._parse_time(quiet_start, "quiet_start")
             end: int = self._parse_time(quiet_end, "quiet_end")
             if start == end:
                 logger.warning("[API限频器] 安静时段开始与结束时间相同，视为未启用")
-                self._quiet_hours_cache = None
                 return None
-            self._quiet_hours_cache = (start, end)
-            return self._quiet_hours_cache
+            return (start, end)
         except (ValueError, TypeError) as e:
             logger.warning(f"[API限频器] 安静时段配置格式错误（{e}），已跳过")
-            self._quiet_hours_cache = None
             return None
 
     def _parse_time(self, time_str: str, field_name: str = "") -> int:
@@ -86,8 +77,6 @@ class APIRateLimiter(Star):
         quiet = self._get_quiet_hours()
         if not quiet:
             return False
-        start_min: int
-        end_min: int
         start_min, end_min = quiet
         now = datetime.now()
         now_min: int = now.hour * 60 + now.minute
@@ -159,20 +148,21 @@ class APIRateLimiter(Star):
             # 检查是否达到次数上限
             max_calls = self._safe_get_int("max_calls", 0)
             cooldown_minutes = self._safe_get_int("cooldown_minutes", 0)
-            if max_calls > 0 and self.call_count >= max_calls:
+            if max_calls > 0 and self.call_count > max_calls:
                 if cooldown_minutes > 0:
                     self.cooldown_until = time.time() + cooldown_minutes * 60
+                    self.call_count = 0
                     logger.info(
                         f"[API限频器] 已达调用上限 ({max_calls}次)，"
                         f"进入冷却期 {cooldown_minutes} 分钟"
                     )
-                    self.call_count = 0
                 else:
-                    logger.info(
+                    logger.warning(
                         f"[API限频器] 已达调用上限 ({max_calls}次)，"
-                        f"未设置冷却时间，次数已重置"
+                        f"未设置冷却时间，后续请求将被持续拒绝，请配置 cooldown_minutes"
                     )
-                    self.call_count = 0
+                event.stop_event()
+                return
 
     async def terminate(self):
         logger.info("[API限频器] 插件已卸载，资源已释放")
