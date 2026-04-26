@@ -36,7 +36,7 @@ class APIRateLimiter(Star):
             logger.warning(f"[API限频器] 安静时段配置格式错误（{e}），已跳过")
             return None
 
-    def _parse_time(self, time_str, field_name: str = "") -> int:
+    def _parse_time(self, time_str: str, field_name: str = "") -> int:
         """将 HH:MM 或纯数字（视为分钟）解析为当天分钟数（0-1439）"""
         time_str = str(time_str).strip()
         if not time_str:
@@ -74,7 +74,8 @@ class APIRateLimiter(Star):
         start_min: int
         end_min: int
         start_min, end_min = quiet
-        now_min: int = datetime.now().hour * 60 + datetime.now().minute
+        now = datetime.now()
+        now_min: int = now.hour * 60 + now.minute
         if start_min < end_min:
             return start_min <= now_min < end_min
         else:
@@ -121,12 +122,14 @@ class APIRateLimiter(Star):
             event.stop_event()
             return
 
-        # 功能三：调用间隔限制 - 拒绝模式（防止协程堆积）
+        # 功能三：调用间隔限制 + 计数更新（合并在同一个锁内）
         cooldown_seconds = self._safe_get_int("cooldown_seconds", 3)
-        if cooldown_seconds > 0:
-            async with self._lock:
-                elapsed = time.time() - self.last_call_time
-            if elapsed < cooldown_seconds:
+        async with self._lock:
+            now = time.time()
+            elapsed = now - self.last_call_time
+
+            # 间隔不足则直接拒绝
+            if cooldown_seconds > 0 and elapsed < cooldown_seconds:
                 wait_time = cooldown_seconds - elapsed
                 logger.info(
                     f"[API限频器] 调用间隔限制：距上次调用仅 {elapsed:.2f} 秒，"
@@ -135,14 +138,7 @@ class APIRateLimiter(Star):
                 event.stop_event()
                 return
 
-        # 更新调用时间与计数
-        async with self._lock:
-            # 二次检查间隔（防止sleep唤醒后并发穿透）
-            now = time.time()
-            if cooldown_seconds > 0 and (now - self.last_call_time) < cooldown_seconds:
-                event.stop_event()
-                return
-
+            # 间隔满足，更新调用时间与计数
             self.last_call_time = now
             self.call_count += 1
 
