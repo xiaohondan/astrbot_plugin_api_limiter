@@ -3,11 +3,18 @@ import time
 from typing import Optional, Tuple
 from datetime import datetime
 from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.star import Context, Star
+from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.llm import ProviderRequest
 
 
+@register(
+    "astrbot_plugin_api_rate_limiter",
+    "小红蛋",
+    "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断三大功能",
+    "1.0.0",
+    "https://github.com/xiaohondan/astrbot_plugin_api_rate_limiter"
+)
 class APIRateLimiter(Star):
     """API调用限频器 - 防止API过度调用导致余额不足"""
 
@@ -18,22 +25,30 @@ class APIRateLimiter(Star):
         self.call_count: int = 0
         self.cooldown_until: float = 0.0
         self._lock = asyncio.Lock()
+        self._quiet_hours_cache: Optional[Tuple[int, int]] = None
 
     def _get_quiet_hours(self) -> Optional[Tuple[int, int]]:
-        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None"""
+        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None，带缓存"""
+        if self._quiet_hours_cache is not None:
+            return self._quiet_hours_cache
+
         quiet_start: str = self.config.get("quiet_start", "")
         quiet_end: str = self.config.get("quiet_end", "")
         if not quiet_start or not quiet_end:
+            self._quiet_hours_cache = None
             return None
         try:
             start: int = self._parse_time(quiet_start, "quiet_start")
             end: int = self._parse_time(quiet_end, "quiet_end")
             if start == end:
                 logger.warning("[API限频器] 安静时段开始与结束时间相同，视为未启用")
+                self._quiet_hours_cache = None
                 return None
-            return start, end
+            self._quiet_hours_cache = (start, end)
+            return self._quiet_hours_cache
         except (ValueError, TypeError) as e:
             logger.warning(f"[API限频器] 安静时段配置格式错误（{e}），已跳过")
+            self._quiet_hours_cache = None
             return None
 
     def _parse_time(self, time_str: str, field_name: str = "") -> int:
@@ -115,20 +130,19 @@ class APIRateLimiter(Star):
             event.stop_event()
             return
 
-        # 功能二：冷却期检查
-        if self._is_in_cooldown():
-            remain = self.cooldown_until - time.time()
-            logger.info(f"[API限频器] 冷却中，剩余 {remain:.0f} 秒")
-            event.stop_event()
-            return
-
-        # 功能三：调用间隔限制 + 计数更新（合并在同一个锁内）
+        # 功能二、三：冷却期 + 间隔限制 + 计数更新（全部在同一锁内）
         cooldown_seconds = self._safe_get_int("cooldown_seconds", 3)
         async with self._lock:
+            # 冷却期检查
+            if self._is_in_cooldown():
+                remain = self.cooldown_until - time.time()
+                logger.info(f"[API限频器] 冷却中，剩余 {remain:.0f} 秒")
+                event.stop_event()
+                return
+
+            # 间隔检查
             now = time.time()
             elapsed = now - self.last_call_time
-
-            # 间隔不足则直接拒绝
             if cooldown_seconds > 0 and elapsed < cooldown_seconds:
                 wait_time = cooldown_seconds - elapsed
                 logger.info(
@@ -138,7 +152,7 @@ class APIRateLimiter(Star):
                 event.stop_event()
                 return
 
-            # 间隔满足，更新调用时间与计数
+            # 更新调用时间与计数
             self.last_call_time = now
             self.call_count += 1
 
@@ -152,12 +166,13 @@ class APIRateLimiter(Star):
                         f"[API限频器] 已达调用上限 ({max_calls}次)，"
                         f"进入冷却期 {cooldown_minutes} 分钟"
                     )
+                    self.call_count = 0
                 else:
                     logger.info(
                         f"[API限频器] 已达调用上限 ({max_calls}次)，"
                         f"未设置冷却时间，次数已重置"
                     )
-                self.call_count = 0
+                    self.call_count = 0
 
     async def terminate(self):
         logger.info("[API限频器] 插件已卸载，资源已释放")
