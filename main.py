@@ -24,22 +24,35 @@ class APIRateLimiter(Star):
         self.call_count: int = 0
         self.cooldown_until: float = 0.0
         self._lock = asyncio.Lock()
+        self._quiet_parse_error: bool = False
+        self._quiet_parse_result: tuple[int, int] | None = None
+        self._quota_exhausted_warned: bool = False
 
     def _get_quiet_hours(self) -> tuple[int, int] | None:
-        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None"""
+        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None
+
+        配置解析失败时仅打印一次警告，避免日志刷屏。
+        """
         quiet_start: str = self.config.get("quiet_start", "")
         quiet_end: str = self.config.get("quiet_end", "")
         if not quiet_start or not quiet_end:
+            self._quiet_parse_error = False
+            self._quiet_parse_result = None
+            return None
+        if self._quiet_parse_error:
             return None
         try:
             start: int = self._parse_time(quiet_start, "quiet_start")
             end: int = self._parse_time(quiet_end, "quiet_end")
             if start == end:
                 logger.warning("[API限频器] 安静时段开始与结束时间相同，视为未启用")
+                self._quiet_parse_error = True
                 return None
-            return (start, end)
+            self._quiet_parse_result = (start, end)
+            return self._quiet_parse_result
         except (ValueError, TypeError) as e:
             logger.warning(f"[API限频器] 安静时段配置格式错误（{e}），已跳过")
+            self._quiet_parse_error = True
             return None
 
     def _parse_time(self, time_str: str, field_name: str = "") -> int:
@@ -152,15 +165,18 @@ class APIRateLimiter(Star):
                 if cooldown_minutes > 0:
                     self.cooldown_until = time.time() + cooldown_minutes * 60
                     self.call_count = 0
+                    self._quota_exhausted_warned = False
                     logger.info(
                         f"[API限频器] 已达调用上限 ({max_calls}次)，"
                         f"进入冷却期 {cooldown_minutes} 分钟"
                     )
                 else:
-                    logger.warning(
-                        f"[API限频器] 已达调用上限 ({max_calls}次)，"
-                        f"未设置冷却时间，后续请求将被持续拒绝，请配置 cooldown_minutes"
-                    )
+                    if not self._quota_exhausted_warned:
+                        logger.warning(
+                            f"[API限频器] 已达调用上限 ({max_calls}次)，"
+                            f"未设置冷却时间，后续请求将被持续拒绝，请配置 cooldown_minutes"
+                        )
+                        self._quota_exhausted_warned = True
                 event.stop_event()
                 return
 
