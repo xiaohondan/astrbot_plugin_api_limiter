@@ -31,7 +31,7 @@
 
 ```bash
 cd AstrBot/data/plugins/
-git clone https://github.com/Xiaohongdan/astrbot_plugin_api_rate_limiter.git
+git clone https://github.com/xiaohondan/astrbot_plugin_api_rate_limiter.git
 ```
 
 ### 方法二：手动安装
