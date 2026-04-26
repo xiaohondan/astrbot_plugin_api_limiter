@@ -1,0 +1,32 @@
+{
+  "cooldown_seconds": {
+    "description": "API调用冷却间隔（秒）",
+    "type": "int",
+    "hint": "每次LLM API调用前需等待的秒数。设置为0或留空则不限制调用间隔。默认3秒。",
+    "default": 3
+  },
+  "max_calls": {
+    "description": "最大调用次数（条）",
+    "type": "int",
+    "hint": "机器人连续发送多少条消息后暂停API调用。设置为0或留空则不限制次数。",
+    "default": 0
+  },
+  "cooldown_minutes": {
+    "description": "冷却等待时间（分钟）",
+    "type": "int",
+    "hint": "达到最大调用次数后，需要等待多少分钟才能继续使用API。设置为0或留空则达到上限后不自动恢复。与「最大调用次数」配合使用。",
+    "default": 0
+  },
+  "quiet_start": {
+    "description": "安静时段开始时间",
+    "type": "string",
+    "hint": "格式为 HH:MM（如 23:00）或纯分钟数（如 1380）。在此时间后机器人将不再调用API。留空则不启用安静时段。",
+    "default": ""
+  },
+  "quiet_end": {
+    "description": "安静时段结束时间",
+    "type": "string",
+    "hint": "格式为 HH:MM（如 07:00）或纯分钟数（如 420）。在此时间后机器人恢复正常API调用。留空则不启用安静时段。",
+    "default": ""
+  }
+}
