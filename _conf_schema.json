@@ -1,0 +1,85 @@
+{
+  "cooldown_seconds": {
+    "description": "API调用冷却间隔（秒）",
+    "type": "int",
+    "hint": "每次LLM API调用前需等待的秒数。设置为0则不限制调用间隔。默认3秒。",
+    "default": 3,
+    "min": 0
+  },
+  "max_calls": {
+    "description": "最大调用次数（条）",
+    "type": "int",
+    "hint": "机器人连续发送多少条消息后暂停API调用。设置为0则不限制次数。",
+    "default": 0,
+    "min": 0
+  },
+  "cooldown_minutes": {
+    "description": "冷却等待时间（分钟）",
+    "type": "int",
+    "hint": "达到最大调用次数后，需要等待多少分钟才能继续使用API。设置为0则达到上限后不自动恢复。与「最大调用次数」配合使用。",
+    "default": 0,
+    "min": 0
+  },
+  "daily_limit": {
+    "description": "每日调用配额（条）",
+    "type": "int",
+    "hint": "每天最多允许的API调用总次数，第二天自动重置。设置为0则不限制每日总量。",
+    "default": 0,
+    "min": 0
+  },
+  "quiet_start": {
+    "description": "安静时段开始时间",
+    "type": "string",
+    "hint": "格式为 HH:MM（如 23:00）或纯分钟数（如 1380）。在此时间后机器人将不再调用API。留空则不启用安静时段。",
+    "default": "",
+    "pattern": "^(\\d{1,4}|\\d{1,2}:\\d{2})$"
+  },
+  "quiet_end": {
+    "description": "安静时段结束时间",
+    "type": "string",
+    "hint": "格式为 HH:MM（如 07:00）或纯分钟数（如 420）。在此时间后机器人恢复正常API调用。留空则不启用安静时段。",
+    "default": "",
+    "pattern": "^(\\d{1,4}|\\d{1,2}:\\d{2})$"
+  },
+  "whitelist": {
+    "description": "白名单用户ID",
+    "type": "string",
+    "hint": "不受限频影响的用户ID，多个用英文逗号分隔（如 123456,789012）。留空则无白名单。",
+    "default": ""
+  },
+  "reject_message": {
+    "description": "自定义拒绝消息",
+    "type": "string",
+    "hint": "请求被拦截时回复给用户的消息。留空则静默拦截（不回复）。",
+    "default": ""
+  },
+  "stats_port": {
+    "description": "统计面板端口",
+    "type": "int",
+    "hint": "WebUI统计面板的HTTP端口。管理员发送「开启统计面板」开启，发送「关闭统计面板」关闭。",
+    "default": 6285,
+    "min": 1024,
+    "max": 65535
+  },
+  "quota_mode": {
+    "description": "对话切断模式",
+    "type": "string",
+    "hint": "选择「单用户」限制每个人独立计数，或「全局」限制所有人加起来计数。留空则不启用对话切断。",
+    "default": "",
+    "items": ["", "单用户", "全局"]
+  },
+  "quota_limit": {
+    "description": "对话切断上限（条）",
+    "type": "int",
+    "hint": "对话次数达到此数值后阻断API。设置为0则不启用。需先选择对话切断模式。",
+    "default": 0,
+    "min": 0
+  },
+  "quota_cooldown_minutes": {
+    "description": "对话切断冷却时间（分钟）",
+    "type": "int",
+    "hint": "达到对话上限后，需等待多少分钟才能继续。设置为0则持续阻断直到次日重置。需先选择对话切断模式。",
+    "default": 0,
+    "min": 0
+  }
+}
