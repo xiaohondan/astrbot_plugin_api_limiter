@@ -52,5 +52,13 @@
     "type": "string",
     "hint": "请求被拦截时回复给用户的消息。留空则静默拦截（不回复）。",
     "default": ""
+  },
+  "stats_port": {
+    "description": "统计面板端口",
+    "type": "int",
+    "hint": "WebUI统计面板的HTTP端口。管理员发送「限频面板」开启，发送「限频面板关」关闭。",
+    "default": 6285,
+    "min": 1024,
+    "max": 65535
   }
 }

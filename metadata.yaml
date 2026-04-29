@@ -1,7 +1,7 @@
 name: astrbot_plugin_api_limiter
 display_name: API调用限频器
 description: 多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断三大功能
-version: 2.0.0
+version: 2.1.0
 author: 小红蛋
 repo: https://github.com/xiaohondan/astrbot_plugin_api_limiter
 astrbot_version: ">=4.16,<5"

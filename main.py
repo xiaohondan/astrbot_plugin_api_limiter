@@ -1,17 +1,166 @@
 import asyncio
+import json
+import socket
 import time
 from datetime import datetime, date
+from aiohttp import web
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.provider import ProviderRequest
 
 
+# ==================== WebUI HTML ====================
+
+STATS_HTML = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API限频统计面板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh; display: flex; justify-content: center; align-items: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 480px; width: 100%; padding: 32px; overflow: hidden;
+  }
+  h1 { text-align: center; color: #333; font-size: 22px; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #999; font-size: 13px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: #f8f9fa; border-radius: 12px; padding: 16px; text-align: center;
+    transition: transform 0.2s;
+  }
+  .stat:hover { transform: translateY(-2px); }
+  .stat.green { background: #e8f5e9; }
+  .stat.red { background: #ffebee; }
+  .stat.orange { background: #fff3e0; }
+  .stat.blue { background: #e3f2fd; }
+  .stat-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+  .stat.green .stat-value { color: #2e7d32; }
+  .stat.red .stat-value { color: #c62828; }
+  .stat.orange .stat-value { color: #e65100; }
+  .stat.blue .stat-value { color: #1565c0; }
+  .section { margin-top: 20px; }
+  .section-title { font-size: 13px; color: #999; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .config-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px;
+  }
+  .config-row:last-child { border-bottom: none; }
+  .config-key { color: #666; }
+  .config-val { color: #333; font-weight: 600; }
+  .config-val.active { color: #2e7d32; }
+  .config-val.inactive { color: #bbb; }
+  .cooldown-bar { width: 100%; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .cooldown-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width 1s; }
+  .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #ccc; }
+  .refresh { float: right; cursor: pointer; background: none; border: 1px solid #ddd; border-radius: 6px;
+    padding: 4px 12px; font-size: 12px; color: #666; transition: all 0.2s; }
+  .refresh:hover { background: #f5f5f5; border-color: #999; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📊 API限频统计</h1>
+  <p class="subtitle" id="datetime">加载中...</p>
+  <button class="refresh" onclick="location.reload()">🔄 刷新</button>
+  <div class="grid">
+    <div class="stat blue">
+      <div class="stat-value" id="daily_count">0</div>
+      <div class="stat-label">今日已调用</div>
+    </div>
+    <div class="stat green">
+      <div class="stat-value" id="stats_total">0</div>
+      <div class="stat-label">累计放行</div>
+    </div>
+    <div class="stat red">
+      <div class="stat-value" id="stats_blocked">0</div>
+      <div class="stat-label">累计拦截</div>
+    </div>
+    <div class="stat orange">
+      <div class="stat-value" id="pass_rate">0%</div>
+      <div class="stat-label">放行率</div>
+    </div>
+  </div>
+  <div id="extra_stats"></div>
+  <div id="cooldown_section" style="display:none;">
+    <div class="section">
+      <div class="section-title">⏳ 冷却状态</div>
+      <div style="font-size:14px;color:#e65100;" id="cooldown_text"></div>
+      <div class="cooldown-bar"><div class="cooldown-fill" id="cooldown_bar" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">⚙️ 当前配置</div>
+    <div id="config_list"></div>
+  </div>
+  <div class="footer">API限频器 v2.1.0 · by 小红蛋</div>
+</div>
+<script>
+const data = __DATA__;
+document.getElementById('datetime').textContent = data.date + ' ' + data.time;
+document.getElementById('daily_count').textContent = data.daily_count + (data.daily_limit > 0 ? ' / ' + data.daily_limit : '');
+document.getElementById('stats_total').textContent = data.stats_total;
+document.getElementById('stats_blocked').textContent = data.stats_blocked;
+const total = data.stats_total + data.stats_blocked;
+document.getElementById('pass_rate').textContent = total > 0 ? Math.round(data.stats_total / total * 100) + '%' : '-';
+
+let extra = '';
+if (data.stats_cooldown_triggered > 0) extra += '<div class="config-row"><span class="config-key">冷却触发</span><span class="config-val">' + data.stats_cooldown_triggered + ' 次</span></div>';
+if (data.stats_daily_blocked > 0) extra += '<div class="config-row"><span class="config-key">每日限额拦截</span><span class="config-val">' + data.stats_daily_blocked + ' 次</span></div>';
+document.getElementById('extra_stats').innerHTML = extra;
+
+if (data.cooldown_remaining > 0) {
+  document.getElementById('cooldown_section').style.display = 'block';
+  document.getElementById('cooldown_text').textContent = '冷却中，剩余 ' + Math.round(data.cooldown_remaining) + ' 秒';
+  const pct = Math.min(100, data.cooldown_remaining / data.cooldown_total * 100);
+  document.getElementById('cooldown_bar').style.width = pct + '%';
+}
+
+let configs = [
+  ['调用间隔', data.cooldown_seconds > 0 ? data.cooldown_seconds + ' 秒' : '未设置', data.cooldown_seconds > 0],
+  ['次数限制', data.max_calls > 0 ? data.max_calls + ' 次' : '未设置', data.max_calls > 0],
+  ['冷却时间', data.cooldown_minutes > 0 ? data.cooldown_minutes + ' 分钟' : '未设置', data.cooldown_minutes > 0],
+  ['每日配额', data.daily_limit > 0 ? data.daily_limit + ' 次' : '未设置', data.daily_limit > 0],
+  ['安静时段', data.quiet_hours || '未设置', !!data.quiet_hours],
+  ['白名单', data.whitelist_count + ' 人', data.whitelist_count > 0],
+  ['拒绝消息', data.reject_message ? '已设置' : '未设置', !!data.reject_message],
+];
+let html = '';
+configs.forEach(function(c) {
+  html += '<div class="config-row"><span class="config-key">' + c[0] + '</span><span class="config-val ' + (c[2] ? 'active' : 'inactive') + '">' + c[1] + '</span></div>';
+});
+document.getElementById('config_list').innerHTML = html;
+</script>
+</body>
+</html>"""
+
+
+def _get_local_ip() -> str:
+    """获取本机局域网 IP"""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
 @register(
     "astrbot_plugin_api_limiter",
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断三大功能",
-    "2.0.0",
+    "2.1.0",
     "https://github.com/xiaohondan/astrbot_plugin_api_limiter"
 )
 class APIRateLimiter(Star):
@@ -25,6 +174,7 @@ class APIRateLimiter(Star):
         # 次数限制 + 冷却
         self.call_count: int = 0
         self.cooldown_until: float = 0.0
+        self._cooldown_total: float = 0.0
         # 安静时段
         self._quiet_parse_error: bool = False
         self._quiet_parse_result: tuple[int, int] | None = None
@@ -40,6 +190,10 @@ class APIRateLimiter(Star):
         self._stats_daily_blocked: int = 0
         # 并发锁
         self._lock = asyncio.Lock()
+        # WebUI
+        self._webui_runner: web.AppRunner | None = None
+        self._webui_port: int = 0
+        self._webui_site: web.TCPSite | None = None
 
     # ==================== 安静时段 ====================
 
@@ -181,9 +335,118 @@ class APIRateLimiter(Star):
             except Exception as e:
                 logger.warning(f"[API限频器] 发送拒绝消息失败: {e}")
 
+    # ==================== WebUI 统计面板 ====================
+
+    def _build_stats_data(self) -> dict:
+        """构建统计面板数据"""
+        daily_limit = self._safe_get_int("daily_limit", 0)
+        cooldown_seconds = self._safe_get_int("cooldown_seconds", 0)
+        max_calls = self._safe_get_int("max_calls", 0)
+        cooldown_minutes = self._safe_get_int("cooldown_minutes", 0)
+        whitelist_str: str = self.config.get("whitelist", "")
+        reject_msg: str = self.config.get("reject_message", "")
+        quiet_hours = self._get_quiet_hours()
+
+        quiet_text = ""
+        if quiet_hours:
+            quiet_text = f"{quiet_hours[0] // 60:02d}:{quiet_hours[0] % 60:02d} - {quiet_hours[1] // 60:02d}:{quiet_hours[1] % 60:02d}"
+
+        whitelist_count = len([u for u in whitelist_str.split(",") if u.strip()])
+
+        cooldown_remaining = 0.0
+        if self._is_in_cooldown():
+            cooldown_remaining = self.cooldown_until - time.time()
+
+        return {
+            "date": date.today().strftime("%Y-%m-%d"),
+            "time": datetime.now().strftime("%H:%M:%S"),
+            "daily_count": self._daily_count,
+            "daily_limit": daily_limit,
+            "stats_total": self._stats_total,
+            "stats_blocked": self._stats_blocked,
+            "stats_cooldown_triggered": self._stats_cooldown_triggered,
+            "stats_daily_blocked": self._stats_daily_blocked,
+            "cooldown_seconds": cooldown_seconds,
+            "max_calls": max_calls,
+            "cooldown_minutes": cooldown_minutes,
+            "whitelist_count": whitelist_count,
+            "reject_message": reject_msg,
+            "quiet_hours": quiet_text,
+            "cooldown_remaining": round(cooldown_remaining, 1),
+            "cooldown_total": self._cooldown_total,
+        }
+
+    async def _webui_handler(self, request: web.Request) -> web.Response:
+        """WebUI 统计面板 HTTP 处理器"""
+        data = self._build_stats_data()
+        html = STATS_HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False))
+        return web.Response(text=html, content_type="text/html", charset="utf-8")
+
+    async def _webui_api_handler(self, request: web.Request) -> web.Response:
+        """WebUI API 接口（返回 JSON）"""
+        data = self._build_stats_data()
+        return web.json_response(data)
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command("开启统计面板")
+    async def webui_start(self, event: AstrMessageEvent):
+        """开启统计面板"""
+        if self._webui_runner is not None:
+            local_ip = _get_local_ip()
+            yield event.plain_result(
+                f"📊 统计面板已在运行中\n"
+                f"🔗 本地访问：http://localhost:{self._webui_port}\n"
+                f"🔗 局域网：http://{local_ip}:{self._webui_port}"
+            )
+            return
+
+        port = self._safe_get_int("stats_port", 6285)
+        app = web.Application()
+        app.router.add_get("/", self._webui_handler)
+        app.router.add_get("/api", self._webui_api_handler)
+        self._webui_runner = web.AppRunner(app)
+
+        try:
+            await self._webui_runner.setup()
+            self._webui_site = web.TCPSite(self._webui_runner, "0.0.0.0", port)
+            await self._webui_site.start()
+            self._webui_port = port
+            local_ip = _get_local_ip()
+            logger.info(f"[API限频器] 统计面板已启动：http://localhost:{port}")
+            yield event.plain_result(
+                f"📊 统计面板已开启！\n"
+                f"🔗 本地访问：http://localhost:{port}\n"
+                f"🔗 局域网：http://{local_ip}:{port}\n"
+                f"发送「关闭统计面板」可关闭面板"
+            )
+        except OSError as e:
+            self._webui_runner = None
+            self._webui_site = None
+            logger.error(f"[API限频器] 统计面板启动失败：{e}")
+            yield event.plain_result(f"❌ 统计面板启动失败：端口 {port} 可能被占用\n{e}")
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command("关闭统计面板")
+    async def webui_stop(self, event: AstrMessageEvent):
+        """关闭统计面板"""
+        if self._webui_runner is None:
+            yield event.plain_result("📊 统计面板未在运行")
+            return
+
+        try:
+            await self._webui_runner.cleanup()
+            logger.info(f"[API限频器] 统计面板已关闭（端口 {self._webui_port}）")
+            self._webui_runner = None
+            self._webui_site = None
+            self._webui_port = 0
+            yield event.plain_result("📊 统计面板已关闭")
+        except Exception as e:
+            logger.error(f"[API限频器] 关闭统计面板失败：{e}")
+            yield event.plain_result(f"❌ 关闭失败：{e}")
+
     # ==================== 统计面板指令 ====================
 
-    @filter.command("限频统计")
+    @filter.command("webui")
     async def stats(self, event: AstrMessageEvent):
         """查看 API 调用统计"""
         daily_limit = self._safe_get_int("daily_limit", 0)
@@ -229,6 +492,9 @@ class APIRateLimiter(Star):
             lines.append(f"⚙️ 已启用：{', '.join(status_parts)}")
         else:
             lines.append("⚙️ 当前：无任何限制")
+
+        lines.append("")
+        lines.append("🌐 发送「开启统计面板」可在浏览器中查看可视化统计")
 
         yield event.plain_result("\n".join(lines))
 
@@ -307,6 +573,7 @@ class APIRateLimiter(Star):
             if max_calls > 0 and self.call_count > max_calls:
                 self._stats_cooldown_triggered += 1
                 if cooldown_minutes > 0:
+                    self._cooldown_total = cooldown_minutes * 60.0
                     self.cooldown_until = time.time() + cooldown_minutes * 60
                     self.call_count = 0
                     self._quota_exhausted_warned = False
@@ -328,4 +595,12 @@ class APIRateLimiter(Star):
                 return
 
     async def terminate(self):
+        # 关闭 WebUI 服务器
+        if self._webui_runner is not None:
+            try:
+                await self._webui_runner.cleanup()
+            except Exception:
+                pass
+            self._webui_runner = None
+            self._webui_site = None
         logger.info("[API限频器] 插件已卸载，资源已释放")
