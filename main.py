@@ -4,15 +4,15 @@ from datetime import datetime
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
-from astrbot.api.llm import ProviderRequest
+from astrbot.api.provider import ProviderRequest
 
 
 @register(
-    "astrbot_plugin_api_rate_limiter",
+    "astrbot_plugin_api_limiter",
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断三大功能",
     "1.0.0",
-    "https://github.com/xiaohondan/astrbot_plugin_api_rate_limiter"
+    "https://github.com/xiaohondan/astrbot_plugin_api_limiter"
 )
 class APIRateLimiter(Star):
     """API调用限频器 - 防止API过度调用导致余额不足"""
