@@ -56,9 +56,30 @@
   "stats_port": {
     "description": "统计面板端口",
     "type": "int",
-    "hint": "WebUI统计面板的HTTP端口。管理员发送「限频面板」开启，发送「限频面板关」关闭。",
+    "hint": "WebUI统计面板的HTTP端口。管理员发送「开启统计面板」开启，发送「关闭统计面板」关闭。",
     "default": 6285,
     "min": 1024,
     "max": 65535
+  },
+  "quota_mode": {
+    "description": "对话切断模式",
+    "type": "string",
+    "hint": "选择「单用户」限制每个人独立计数，或「全局」限制所有人加起来计数。留空则不启用对话切断。",
+    "default": "",
+    "items": ["", "单用户", "全局"]
+  },
+  "quota_limit": {
+    "description": "对话切断上限（条）",
+    "type": "int",
+    "hint": "对话次数达到此数值后阻断API。设置为0则不启用。需先选择对话切断模式。",
+    "default": 0,
+    "min": 0
+  },
+  "quota_cooldown_minutes": {
+    "description": "对话切断冷却时间（分钟）",
+    "type": "int",
+    "hint": "达到对话上限后，需等待多少分钟才能继续。设置为0则持续阻断直到次日重置。需先选择对话切断模式。",
+    "default": 0,
+    "min": 0
   }
 }

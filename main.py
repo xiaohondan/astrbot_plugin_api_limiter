@@ -42,12 +42,14 @@ STATS_HTML = """<!DOCTYPE html>
   .stat.red { background: #ffebee; }
   .stat.orange { background: #fff3e0; }
   .stat.blue { background: #e3f2fd; }
+  .stat.purple { background: #f3e5f5; }
   .stat-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
   .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
   .stat.green .stat-value { color: #2e7d32; }
   .stat.red .stat-value { color: #c62828; }
   .stat.orange .stat-value { color: #e65100; }
   .stat.blue .stat-value { color: #1565c0; }
+  .stat.purple .stat-value { color: #7b1fa2; }
   .section { margin-top: 20px; }
   .section-title { font-size: 13px; color: #999; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
   .config-row {
@@ -102,7 +104,7 @@ STATS_HTML = """<!DOCTYPE html>
     <div class="section-title">⚙️ 当前配置</div>
     <div id="config_list"></div>
   </div>
-  <div class="footer">API限频器 v2.1.0 · by 小红蛋</div>
+  <div class="footer">API限频器 v2.2.0 · by 小红蛋</div>
 </div>
 <script>
 const data = __DATA__;
@@ -116,6 +118,7 @@ document.getElementById('pass_rate').textContent = total > 0 ? Math.round(data.s
 let extra = '';
 if (data.stats_cooldown_triggered > 0) extra += '<div class="config-row"><span class="config-key">冷却触发</span><span class="config-val">' + data.stats_cooldown_triggered + ' 次</span></div>';
 if (data.stats_daily_blocked > 0) extra += '<div class="config-row"><span class="config-key">每日限额拦截</span><span class="config-val">' + data.stats_daily_blocked + ' 次</span></div>';
+if (data.stats_dialog_blocked > 0) extra += '<div class="config-row"><span class="config-key">对话上限拦截</span><span class="config-val">' + data.stats_dialog_blocked + ' 次</span></div>';
 document.getElementById('extra_stats').innerHTML = extra;
 
 if (data.cooldown_remaining > 0) {
@@ -130,6 +133,7 @@ let configs = [
   ['次数限制', data.max_calls > 0 ? data.max_calls + ' 次' : '未设置', data.max_calls > 0],
   ['冷却时间', data.cooldown_minutes > 0 ? data.cooldown_minutes + ' 分钟' : '未设置', data.cooldown_minutes > 0],
   ['每日配额', data.daily_limit > 0 ? data.daily_limit + ' 次' : '未设置', data.daily_limit > 0],
+  ['对话切断', data.quota_limit > 0 ? (data.quota_mode === '单用户' ? '单用户 ' : '全局 ') + data.quota_limit + ' 次' : '未设置', data.quota_limit > 0],
   ['安静时段', data.quiet_hours || '未设置', !!data.quiet_hours],
   ['白名单', data.whitelist_count + ' 人', data.whitelist_count > 0],
   ['拒绝消息', data.reject_message ? '已设置' : '未设置', !!data.reject_message],
@@ -160,7 +164,7 @@ def _get_local_ip() -> str:
     "astrbot_plugin_api_limiter",
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断三大功能",
-    "2.1.0",
+    "2.2.0",
     "https://github.com/xiaohondan/astrbot_plugin_api_limiter"
 )
 class APIRateLimiter(Star):
@@ -183,11 +187,15 @@ class APIRateLimiter(Star):
         # 每日配额
         self._daily_count: int = 0
         self._daily_date: date = date.today()
+        # 对话切断
+        self._dialog_counts: dict[str, int] = {}  # key -> 对话计数
+        self._dialog_cooldowns: dict[str, float] = {}  # key -> 冷却截止时间
         # 统计数据
         self._stats_total: int = 0
         self._stats_blocked: int = 0
         self._stats_cooldown_triggered: int = 0
         self._stats_daily_blocked: int = 0
+        self._stats_dialog_blocked: int = 0
         # 并发锁
         self._lock = asyncio.Lock()
         # WebUI
@@ -198,10 +206,7 @@ class APIRateLimiter(Star):
     # ==================== 安静时段 ====================
 
     def _get_quiet_hours(self) -> tuple[int, int] | None:
-        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None
-
-        配置解析失败时仅打印一次警告，避免日志刷屏。
-        """
+        """解析安静时段配置，返回 (开始分钟, 结束分钟) 或 None"""
         quiet_start: str = self.config.get("quiet_start", "")
         quiet_end: str = self.config.get("quiet_end", "")
         if not quiet_start or not quiet_end:
@@ -286,7 +291,7 @@ class APIRateLimiter(Star):
     # ==================== 每日配额 ====================
 
     def _reset_daily_if_needed(self) -> None:
-        """如果跨天了，重置每日计数"""
+        """如果跨天了，重置每日计数和对话切断计数"""
         today = date.today()
         if self._daily_date != today:
             logger.info(
@@ -295,6 +300,14 @@ class APIRateLimiter(Star):
             )
             self._daily_count = 0
             self._daily_date = today
+            # 重置对话切断计数
+            if self._dialog_counts:
+                logger.info(
+                    f"[API限频器] 新的一天，重置对话切断计数"
+                    f"（追踪 {len(self._dialog_counts)} 个对象）"
+                )
+            self._dialog_counts.clear()
+            self._dialog_cooldowns.clear()
 
     def _is_daily_exceeded(self) -> bool:
         """判断是否超出每日配额"""
@@ -302,6 +315,110 @@ class APIRateLimiter(Star):
         if daily_limit <= 0:
             return False
         return self._daily_count >= daily_limit
+
+    # ==================== 对话切断 ====================
+
+    def _get_dialog_key(self, event: AstrMessageEvent) -> str:
+        """获取对话切断的 key
+
+        私聊：以「pm:用户ID」为 key
+        群聊：以「grp:用户ID」为 key（单用户模式）或「grp:群号」为 key（全局模式）
+        """
+        try:
+            sender_id = str(event.get_sender_id())
+        except Exception:
+            return ""
+        quota_mode: str = self.config.get("quota_mode", "")
+        if not quota_mode:
+            return ""
+
+        # 判断是否为私聊（AstrBot 中群消息有 group_id）
+        is_private = True
+        try:
+            group_id = event.get_group_id()
+            if group_id:
+                is_private = False
+        except Exception:
+            pass
+
+        if quota_mode == "单用户":
+            prefix = "pm" if is_private else "grp"
+            return f"{prefix}:{sender_id}"
+        elif quota_mode == "全局":
+            # 全局模式：私聊按用户ID，群聊按群号
+            if is_private:
+                return f"global_pm:{sender_id}"
+            else:
+                try:
+                    group_id = str(event.get_group_id())
+                    return f"global_grp:{group_id}"
+                except Exception:
+                    return f"global_pm:{sender_id}"
+        return ""
+
+    def _check_dialog_limit(self, event: AstrMessageEvent) -> bool:
+        """检查对话切断限制，返回 True 表示应拦截
+
+        必须在锁内调用。
+        """
+        quota_mode: str = self.config.get("quota_mode", "")
+        quota_limit = self._safe_get_int("quota_limit", 0)
+        quota_cooldown = self._safe_get_int("quota_cooldown_minutes", 0)
+
+        if not quota_mode or quota_limit <= 0:
+            return False
+
+        key = self._get_dialog_key(event)
+        if not key:
+            return False
+
+        # 检查是否在冷却中
+        if key in self._dialog_cooldowns:
+            if time.time() < self._dialog_cooldowns[key]:
+                return True
+            else:
+                # 冷却结束，清除记录
+                del self._dialog_cooldowns[key]
+                self._dialog_counts[key] = 0
+
+        return False
+
+    def _update_dialog_count(self, event: AstrMessageEvent) -> None:
+        """放行后更新对话计数，如达到上限则记录冷却
+
+        必须在锁内调用。仅更新计数，不拦截。
+        """
+        quota_mode: str = self.config.get("quota_mode", "")
+        quota_limit = self._safe_get_int("quota_limit", 0)
+        quota_cooldown = self._safe_get_int("quota_cooldown_minutes", 0)
+
+        if not quota_mode or quota_limit <= 0:
+            return
+
+        key = self._get_dialog_key(event)
+        if not key:
+            return
+
+        if key not in self._dialog_counts:
+            self._dialog_counts[key] = 0
+
+        self._dialog_counts[key] += 1
+
+        # 刚达到上限，记录冷却但不拦截（本次已放行）
+        if self._dialog_counts[key] > quota_limit:
+            self._stats_dialog_blocked += 1
+            if quota_cooldown > 0:
+                self._dialog_cooldowns[key] = time.time() + quota_cooldown * 60
+                self._dialog_counts[key] = 0
+                logger.info(
+                    f"[API限频器] 对话切断：{key} 已达上限 "
+                    f"（{quota_limit}次），进入冷却 {quota_cooldown} 分钟"
+                )
+            else:
+                logger.info(
+                    f"[API限频器] 对话切断：{key} 已达上限 "
+                    f"（{quota_limit}次），持续阻断"
+                )
 
     # ==================== 工具方法 ====================
 
@@ -343,8 +460,11 @@ class APIRateLimiter(Star):
         cooldown_seconds = self._safe_get_int("cooldown_seconds", 0)
         max_calls = self._safe_get_int("max_calls", 0)
         cooldown_minutes = self._safe_get_int("cooldown_minutes", 0)
+        quota_limit = self._safe_get_int("quota_limit", 0)
+        quota_cooldown = self._safe_get_int("quota_cooldown_minutes", 0)
         whitelist_str: str = self.config.get("whitelist", "")
         reject_msg: str = self.config.get("reject_message", "")
+        quota_mode: str = self.config.get("quota_mode", "")
         quiet_hours = self._get_quiet_hours()
 
         quiet_text = ""
@@ -366,9 +486,13 @@ class APIRateLimiter(Star):
             "stats_blocked": self._stats_blocked,
             "stats_cooldown_triggered": self._stats_cooldown_triggered,
             "stats_daily_blocked": self._stats_daily_blocked,
+            "stats_dialog_blocked": self._stats_dialog_blocked,
             "cooldown_seconds": cooldown_seconds,
             "max_calls": max_calls,
             "cooldown_minutes": cooldown_minutes,
+            "quota_mode": quota_mode,
+            "quota_limit": quota_limit,
+            "quota_cooldown_minutes": quota_cooldown,
             "whitelist_count": whitelist_count,
             "reject_message": reject_msg,
             "quiet_hours": quiet_text,
@@ -471,6 +595,8 @@ class APIRateLimiter(Star):
             lines.append(f"⏳ 冷却触发：**{self._stats_cooldown_triggered}** 次")
         if self._stats_daily_blocked > 0:
             lines.append(f"📋 每日限额拦截：**{self._stats_daily_blocked}** 次")
+        if self._stats_dialog_blocked > 0:
+            lines.append(f"✂️ 对话切断拦截：**{self._stats_dialog_blocked}** 次")
         if cooldown_remain > 0:
             lines.append(f"🔴 当前冷却剩余：**{cooldown_remain:.0f}** 秒")
 
@@ -478,6 +604,8 @@ class APIRateLimiter(Star):
         cooldown_sec = self._safe_get_int("cooldown_seconds", 0)
         max_calls = self._safe_get_int("max_calls", 0)
         quiet_hours = self._get_quiet_hours()
+        quota_mode: str = self.config.get("quota_mode", "")
+        quota_limit = self._safe_get_int("quota_limit", 0)
 
         status_parts: list[str] = []
         if cooldown_sec > 0:
@@ -486,6 +614,8 @@ class APIRateLimiter(Star):
             status_parts.append(f"次数 {max_calls}")
         if daily_limit > 0:
             status_parts.append(f"日限 {daily_limit}")
+        if quota_limit > 0 and quota_mode:
+            status_parts.append(f"对话切断({quota_mode})")
         if quiet_hours:
             status_parts.append("安静时段")
         if status_parts:
@@ -506,7 +636,7 @@ class APIRateLimiter(Star):
         if self._is_whitelisted(event):
             return
 
-        # 跨天重置每日配额
+        # 跨天重置每日配额和对话切断计数
         self._reset_daily_if_needed()
 
         # 每日配额检查
@@ -535,7 +665,7 @@ class APIRateLimiter(Star):
             event.stop_event()
             return
 
-        # 功能二、三：冷却期 + 间隔限制 + 计数更新（全部在同一锁内）
+        # 功能二、三、四：冷却期 + 间隔限制 + 计数更新 + 对话切断（全部在同一锁内）
         cooldown_seconds = self._safe_get_int("cooldown_seconds", 3)
         async with self._lock:
             # 冷却期检查
@@ -543,6 +673,22 @@ class APIRateLimiter(Star):
                 self._stats_blocked += 1
                 remain = self.cooldown_until - time.time()
                 logger.info(f"[API限频器] 冷却中，剩余 {remain:.0f} 秒")
+                await self._send_reject(event)
+                event.stop_event()
+                return
+
+            # 对话切断检查（在间隔检查之前，优先级更高）
+            if self._check_dialog_limit(event):
+                self._stats_blocked += 1
+                key = self._get_dialog_key(event)
+                quota_limit = self._safe_get_int("quota_limit", 0)
+                quota_cooldown = self._safe_get_int("quota_cooldown_minutes", 0)
+                logger.info(
+                    f"[API限频器] 对话切断生效：{key} "
+                    f"（上限 {quota_limit} 次"
+                    + (f"，冷却 {quota_cooldown} 分钟" if quota_cooldown > 0 else "，持续阻断")
+                    + "）"
+                )
                 await self._send_reject(event)
                 event.stop_event()
                 return
@@ -566,6 +712,9 @@ class APIRateLimiter(Star):
             self.call_count += 1
             self._daily_count += 1
             self._stats_total += 1
+
+            # 更新对话切断计数（放行后也要计数）
+            self._update_dialog_count(event)
 
             # 检查是否达到次数上限
             max_calls = self._safe_get_int("max_calls", 0)
