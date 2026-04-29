@@ -20,6 +20,13 @@
     "default": 0,
     "min": 0
   },
+  "daily_limit": {
+    "description": "每日调用配额（条）",
+    "type": "int",
+    "hint": "每天最多允许的API调用总次数，第二天自动重置。设置为0则不限制每日总量。",
+    "default": 0,
+    "min": 0
+  },
   "quiet_start": {
     "description": "安静时段开始时间",
     "type": "string",
@@ -33,5 +40,17 @@
     "hint": "格式为 HH:MM（如 07:00）或纯分钟数（如 420）。在此时间后机器人恢复正常API调用。留空则不启用安静时段。",
     "default": "",
     "pattern": "^(\\d{1,4}|\\d{1,2}:\\d{2})$"
+  },
+  "whitelist": {
+    "description": "白名单用户ID",
+    "type": "string",
+    "hint": "不受限频影响的用户ID，多个用英文逗号分隔（如 123456,789012）。留空则无白名单。",
+    "default": ""
+  },
+  "reject_message": {
+    "description": "自定义拒绝消息",
+    "type": "string",
+    "hint": "请求被拦截时回复给用户的消息。留空则静默拦截（不回复）。",
+    "default": ""
   }
 }
