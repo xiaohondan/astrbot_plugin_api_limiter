@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="./logo.png" alt="Logo" width="200">
+<img src="./banner.png" alt="Banner">
 
 **API调用限频器** —— 让你的 AstrBot 机器人不再"疯狂烧钱"
 
 [中文](./README.md) | [English](./README-en.md) | [日本語](./README-ja.md) | [한국어](./README-ko.md)
 
-![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
+![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lisu&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 一款为 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 打造的多功能 API 调用管理插件，帮助你精准控制 LLM API 的使用频率，防止余额消耗过快，同时避免机器人半夜在群里"扰民"。
 

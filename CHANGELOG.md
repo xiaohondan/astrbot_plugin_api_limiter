@@ -4,7 +4,22 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
-![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
+![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lisu&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
+
+---
+
+## [2.4.2] - 2026-04-30
+
+### 新增
+
+- **Banner 图像**：新增 `banner.png`，用于 README 展示，包含渐变背景、圆形头像和标题文字
+- **多语言文档**：补齐日语（README-ja.md）和韩语（README-ko.md）完整翻译
+
+### 变更
+
+- README 统一使用 `banner.png` 替代 `logo.png` 作为顶部横幅（logo.png 保持不变，AstrBot 插件市场继续使用）
+- Visitor Badge 主题统一更新为 `booru-lisu`
+- 版本号升级至 2.4.2
 
 ---
 
