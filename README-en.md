@@ -1,10 +1,12 @@
 <div align="center">
 
+<img src="./banner.png" alt="Banner">
+
 **API Rate Limiter** — Stop your AstrBot bot from burning through API credits
 
 [中文](./README.md) | [English](./README-en.md) | [日本語](./README-ja.md) | [한국어](./README-ko.md)
 
-![:name](https://count.getloli.com/@xiaohondan?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
+![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lisu&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 A multi-purpose API call management plugin for [AstrBot](https://github.com/AstrBotDevs/AstrBot). Take precise control of LLM API usage frequency, prevent rapid credit consumption, and stop your bot from being "annoying" late at night.
 
