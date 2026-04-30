@@ -6,9 +6,7 @@
 
 [中文](./README.md) | [English](./README-en.md) | [日本語](./README-ja.md) | [한국어](./README-ko.md)
 
-![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lisu&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
-
-[AstrBot](https://github.com/AstrBotDevs/AstrBot)을 위한 다기능 API 호출 관리 플러그인. LLM API 사용 빈도를 정밀하게 제어하여 잔액이 빠르게 소모되는 것을 방지하고, 봇이 밤에 그룹에서 "방해"하는 것을 막아줍니다.
+![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 </div>
 
