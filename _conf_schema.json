@@ -47,6 +47,24 @@
     "hint": "不受限频影响的用户ID，多个用英文逗号分隔（如 123456,789012）。留空则无白名单。",
     "default": ""
   },
+  "blacklist": {
+    "description": "黑名单用户ID",
+    "type": "string",
+    "hint": "直接拒绝的用户ID，不占用配额，多个用英文逗号分隔（如 111111,222222）。留空则无黑名单。",
+    "default": ""
+  },
+  "timeslots": {
+    "description": "分时段限频配置",
+    "type": "string",
+    "hint": "JSON格式，按小时设置不同的限频参数。例：{\"8\":{\"cooldown_seconds\":5,\"max_calls\":50,\"cooldown_minutes\":10},\"22\":{\"cooldown_seconds\":30,\"max_calls\":10,\"cooldown_minutes\":60}} 表示8点-9点宽松、22点-23点严格。留空则不启用。",
+    "default": ""
+  },
+  "group_quotas": {
+    "description": "群聊独立配额",
+    "type": "string",
+    "hint": "为不同群设置不同的每日配额，格式：群号:配额，多个用英文分号分隔（如 123456:50;789012:100）。留空则所有群使用全局配额。",
+    "default": ""
+  },
   "reject_message": {
     "description": "自定义拒绝消息",
     "type": "string",

@@ -1,6 +1,9 @@
-# 🐱 astrbot_plugin_api_limiter
+#  astrbot_plugin_api_limiter
 
 **API调用限频器** —— 让你的 AstrBot 机器人不再"疯狂烧钱"
+
+
+![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 一款为 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 打造的多功能 API 调用管理插件，帮助你精准控制 LLM API 的使用频率，防止余额消耗过快，同时避免机器人半夜在群里"扰民"。
 
