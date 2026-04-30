@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./logo.png" alt="Logo" width="200">
+
 **API Rate Limiter** — Stop your AstrBot bot from burning through API credits
 
 [中文](./README.md) | [English](./README-en.md) | [日本語](./README-ja.md) | [한국어](./README-ko.md)
