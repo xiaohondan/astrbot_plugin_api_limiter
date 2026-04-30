@@ -113,7 +113,7 @@ STATS_HTML = """<!DOCTYPE html>
     <div class="section-title">📝 最近拦截记录</div>
     <div class="section-content" id="log_list">暂无记录</div>
   </div>
-  <div class="footer">API限频器 v2.4.0 · by 小红蛋</div>
+  <div class="footer">API限频器 v2.4.1 · by 小红蛋</div>
 </div>
 <script>
 const data = __DATA__;
@@ -186,7 +186,7 @@ def _get_local_ip() -> str:
     "astrbot_plugin_api_limiter",
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断、白/黑名单、分时段限频、群聊独立配额七大功能",
-    "2.4.0",
+    "2.4.1",
     "https://github.com/xiaohondan/astrbot_plugin_api_limiter"
 )
 class APIRateLimiter(Star):
@@ -700,12 +700,22 @@ class APIRateLimiter(Star):
 
     async def _webui_handler(self, request: web.Request) -> web.Response:
         """WebUI 统计面板 HTTP 处理器"""
+        token = self.config.get("stats_token", "")
+        if token:
+            req_token = request.query.get("token", "")
+            if req_token != token:
+                return web.Response(text="403 Forbidden", status=403)
         data = self._build_stats_data()
         html = STATS_HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False))
         return web.Response(text=html, content_type="text/html", charset="utf-8")
 
     async def _webui_api_handler(self, request: web.Request) -> web.Response:
         """WebUI API 接口"""
+        token = self.config.get("stats_token", "")
+        if token:
+            req_token = request.query.get("token", "")
+            if req_token != token:
+                return web.json_response({"error": "Forbidden"}, status=403)
         data = self._build_stats_data()
         return web.json_response(data)
 
@@ -715,10 +725,12 @@ class APIRateLimiter(Star):
         """开启统计面板"""
         if self._webui_runner is not None:
             local_ip = _get_local_ip()
+            token = self.config.get("stats_token", "")
+            token_param = f"?token={token}" if token else ""
             yield event.plain_result(
                 f"📊 统计面板已在运行中\n"
-                f"🔗 本地访问：http://localhost:{self._webui_port}\n"
-                f"🔗 局域网：http://{local_ip}:{self._webui_port}"
+                f"🔗 本地访问：http://localhost:{self._webui_port}{token_param}\n"
+                f"🔗 局域网：http://{local_ip}:{self._webui_port}{token_param}"
             )
             return
 
@@ -734,11 +746,13 @@ class APIRateLimiter(Star):
             await self._webui_site.start()
             self._webui_port = port
             local_ip = _get_local_ip()
+            token = self.config.get("stats_token", "")
+            token_param = f"?token={token}" if token else ""
             logger.info(f"[API限频器] 统计面板已启动：http://localhost:{port}")
             yield event.plain_result(
                 f"📊 统计面板已开启！\n"
-                f"🔗 本地访问：http://localhost:{port}\n"
-                f"🔗 局域网：http://{local_ip}:{port}\n"
+                f"🔗 本地访问：http://localhost:{port}{token_param}\n"
+                f"🔗 局域网：http://{local_ip}:{port}{token_param}\n"
                 f"发送「关闭统计面板」可关闭面板"
             )
         except OSError as e:

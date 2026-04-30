@@ -79,6 +79,12 @@
     "min": 1024,
     "max": 65535
   },
+  "stats_token": {
+    "description": "统计面板访问令牌",
+    "type": "string",
+    "hint": "访问统计面板需要携带的Token参数，防止局域网内其他人查看面板。留空则不验证（任何人可访问）。设置后访问地址变为 http://IP:端口?token=你的令牌",
+    "default": ""
+  },
   "quota_mode": {
     "description": "对话切断模式",
     "type": "string",
