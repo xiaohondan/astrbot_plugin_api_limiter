@@ -13,7 +13,6 @@ permissions:
   issues: write
   pull-requests: write
   contents: read
-  label: write
 
 jobs:
   # ── 自动分类：根据 Issue 模板自动打标签 + 智能回复 ──
