@@ -36,6 +36,9 @@
   <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/commits/main">
     <img src="https://img.shields.io/github/last-commit/xiaohondan/astrbot_plugin_api_limiter?style=flat-square&label=last%20commit" alt="Last Commit">
   </a>
+  <a href="https://github.com/xiaohondan">
+    <img src="https://img.shields.io/badge/Author-%E5%B0%8F%E7%BA%A2%E8%9B%8B-orange?style=flat-square" alt="Author">
+  </a>
 </p>
 
 ![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
