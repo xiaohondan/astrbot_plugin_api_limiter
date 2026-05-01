@@ -1,7 +1,7 @@
 # API 调用限频器
 
 <p align="center">
-  <img src="./logo.png" width="120" alt="Logo">
+  <img src="./banner.png" alt="Banner">
 </p>
 
 <p align="center">
@@ -25,8 +25,6 @@
 </p>
 
 ![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
-
-</div>
 
 ---
 
