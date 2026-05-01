@@ -1,0 +1,76 @@
+name: PR Auto Check & Link
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  pr-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const validPrefixes = [
+              /^feat:/i,
+              /^fix:/i,
+              /^docs:/i,
+              /^style:/i,
+              /^refactor:/i,
+              /^perf:/i,
+              /^test:/i,
+              /^chore:/i,
+              /^build:/i,
+              /^ci:/i,
+              /^release:/i,
+              /^Bump|^Update|^Add|^Fix|^Remove|^Improve|^Refactor/i
+            ];
+
+            const isValid = validPrefixes.some(regex => regex.test(title));
+
+            if (!isValid) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.pull_request.number,
+                body: `## ⚠️ PR Title Format Notice\n\n` +
+                      `Your PR title doesn't follow the conventional format.\n\n` +
+                      `**Recommended prefixes:**\n` +
+                      `- \`feat:\` - New feature\n` +
+                      `- \`fix:\` - Bug fix\n` +
+                      `- \`docs:\` - Documentation\n` +
+                      `- \`refactor:\` - Code refactoring\n` +
+                      `- \`chore:\` - Maintenance\n\n` +
+                      `Example: \`feat: add auto-label workflow\`\n\n` +
+                      `> This is just a suggestion, not a blocker.`
+              });
+            }
+
+      - name: Check for linked issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const issueRegex = /(?:fixes|closes|resolves|关闭|修复|解决)\s*#(\d+)/gi;
+            const matches = body.match(issueRegex);
+
+            if (!matches) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.pull_request.number,
+                body: `## 💡 Tip: Link Related Issues\n\n` +
+                      `This PR doesn't seem to reference any issues.\n\n` +
+                      `You can use these keywords to auto-close issues when PR is merged:\n` +
+                      `- \`Fixes #123\` or \`Closes #123\`\n` +
+                      `- \`关闭 #123\` or \`修复 #123\`\n\n` +
+                      `> This is just a suggestion, not a blocker.`
+              });
+            }
