@@ -39,6 +39,12 @@
   <a href="https://github.com/xiaohondan">
     <img src="https://img.shields.io/badge/Author-%E5%B0%8F%E7%BA%A2%E8%9B%8B-orange?style=flat-square" alt="Author">
   </a>
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/stargazers">
+    <img src="https://img.shields.io/github/stars/xiaohondan/astrbot_plugin_api_limiter?style=flat-square" alt="Stars">
+  </a>
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/forks">
+    <img src="https://img.shields.io/github/forks/xiaohondan/astrbot_plugin_api_limiter?style=flat-square" alt="Forks">
+  </a>
 </p>
 
 ![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
