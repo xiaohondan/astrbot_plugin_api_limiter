@@ -31,96 +31,140 @@ SCORE_WARN = 50
 # 恶意代码模式: (正则, 描述, 严重等级, 修复建议)
 MALICIOUS_PATTERNS = [
     # 命令注入
-    (r"os\.system\s*\(", "命令注入: os.system",
-     "HIGH", "避免使用 os.system，改用 subprocess.run(shell=False)"),
-    (r"subprocess\.(call|run|Popen)\s*\([^)]*shell\s*=\s*True",
-     "命令注入: subprocess shell=True",
-     "HIGH", "将 shell=True 改为 shell=False，避免 shell 注入"),
-    (r"eval\s*\(", "代码执行: eval",
-     "CRITICAL", "禁止使用 eval，它可执行任意代码，用 ast.literal_eval 替代"),
-    (r"exec\s*\(", "代码执行: exec",
-     "CRITICAL", "禁止使用 exec，它可执行任意代码"),
-    (r"__import__\s*\(", "动态导入: __import__",
-     "HIGH", "避免动态导入，如需导入请使用 importlib.import_module"),
-    (r"compile\s*\(", "代码编译: compile",
-     "HIGH", "避免使用 compile 编译动态代码"),
-
+    (
+        r"os\.system\s*\(",
+        "命令注入: os.system",
+        "HIGH",
+        "避免使用 os.system，改用 subprocess.run(shell=False)",
+    ),
+    (
+        r"subprocess\.(call|run|Popen)\s*\([^)]*shell\s*=\s*True",
+        "命令注入: subprocess shell=True",
+        "HIGH",
+        "将 shell=True 改为 shell=False，避免 shell 注入",
+    ),
+    (
+        r"eval\s*\(",
+        "代码执行: eval",
+        "CRITICAL",
+        "禁止使用 eval，它可执行任意代码，用 ast.literal_eval 替代",
+    ),
+    (r"exec\s*\(", "代码执行: exec", "CRITICAL", "禁止使用 exec，它可执行任意代码"),
+    (
+        r"__import__\s*\(",
+        "动态导入: __import__",
+        "HIGH",
+        "避免动态导入，如需导入请使用 importlib.import_module",
+    ),
+    (r"compile\s*\(", "代码编译: compile", "HIGH", "避免使用 compile 编译动态代码"),
     # 反序列化
-    (r"pickle\.loads?\s*\(", "不安全反序列化: pickle",
-     "CRITICAL", "pickle 可执行任意代码，改用 json 或 safer alternatives"),
-    (r"marshal\.loads?\s*\(", "不安全反序列化: marshal",
-     "CRITICAL", "marshal 不安全，不要用于不可信数据"),
-    (r"shelve\.open\s*\(", "不安全反序列化: shelve",
-     "MEDIUM", "shelve 基于 pickle，注意不要加载不可信数据"),
-
+    (
+        r"pickle\.loads?\s*\(",
+        "不安全反序列化: pickle",
+        "CRITICAL",
+        "pickle 可执行任意代码，改用 json 或 safer alternatives",
+    ),
+    (
+        r"marshal\.loads?\s*\(",
+        "不安全反序列化: marshal",
+        "CRITICAL",
+        "marshal 不安全，不要用于不可信数据",
+    ),
+    (
+        r"shelve\.open\s*\(",
+        "不安全反序列化: shelve",
+        "MEDIUM",
+        "shelve 基于 pickle，注意不要加载不可信数据",
+    ),
     # 文件操作
-    (r"open\s*\(\s*['\"]/", "绝对路径文件操作",
-     "MEDIUM", "避免硬编码绝对路径，使用相对路径或配置"),
-    (r"os\.remove\s*\(", "文件删除: os.remove",
-     "MEDIUM", "使用前检查路径合法性，防止路径遍历"),
-    (r"shutil\.rmtree\s*\(", "目录删除: shutil.rmtree",
-     "HIGH", "确认目标路径，防止误删重要目录"),
-    (r"glob\.glob\s*\(\s*['\"]/", "路径遍历风险: glob",
-     "LOW", "注意 glob 匹配结果，防止路径遍历"),
-
+    (
+        r"open\s*\(\s*['\"]/",
+        "绝对路径文件操作",
+        "MEDIUM",
+        "避免硬编码绝对路径，使用相对路径或配置",
+    ),
+    (
+        r"os\.remove\s*\(",
+        "文件删除: os.remove",
+        "MEDIUM",
+        "使用前检查路径合法性，防止路径遍历",
+    ),
+    (
+        r"shutil\.rmtree\s*\(",
+        "目录删除: shutil.rmtree",
+        "HIGH",
+        "确认目标路径，防止误删重要目录",
+    ),
+    (
+        r"glob\.glob\s*\(\s*['\"]/",
+        "路径遍历风险: glob",
+        "LOW",
+        "注意 glob 匹配结果，防止路径遍历",
+    ),
     # 网络操作
-    (r"requests\.(get|post)\s*\([^)]*verify\s*=\s*False",
-     "禁用 SSL 验证",
-     "HIGH", "不应禁用 SSL 验证，会导致中间人攻击风险"),
-    (r"urllib\.request\.urlopen\s*\(",
-     "原始 HTTP 请求: urllib",
-     "LOW", "建议使用 requests 库，更安全易用"),
-    (r"socket\.",
-     "底层网络操作: socket",
-     "MEDIUM", "确保连接目标和数据经过验证"),
-
+    (
+        r"requests\.(get|post)\s*\([^)]*verify\s*=\s*False",
+        "禁用 SSL 验证",
+        "HIGH",
+        "不应禁用 SSL 验证，会导致中间人攻击风险",
+    ),
+    (
+        r"urllib\.request\.urlopen\s*\(",
+        "原始 HTTP 请求: urllib",
+        "LOW",
+        "建议使用 requests 库，更安全易用",
+    ),
+    (r"socket\.", "底层网络操作: socket", "MEDIUM", "确保连接目标和数据经过验证"),
     # 权限/信息泄露
-    (r"os\.chmod\s*\(\s*[^,]+,\s*0o777",
-     "过度宽松的文件权限: 0777",
-     "MEDIUM", "避免设置 0777 权限，最小权限原则"),
-
+    (
+        r"os\.chmod\s*\(\s*[^,]+,\s*0o777",
+        "过度宽松的文件权限: 0777",
+        "MEDIUM",
+        "避免设置 0777 权限，最小权限原则",
+    ),
     # 环境变量
-    (r"environ\s*\[", "环境变量访问",
-     "LOW", "确认不会泄露敏感环境变量（API Key、密码等）"),
-
+    (
+        r"environ\s*\[",
+        "环境变量访问",
+        "LOW",
+        "确认不会泄露敏感环境变量（API Key、密码等）",
+    ),
     # 其他
-    (r"getattr\s*\(\s*[^,]+,\s*['\"]__",
-     "动态属性访问: getattr __",
-     "HIGH", "避免访问 dunder 属性，可能导致意外行为"),
-    (r"setattr\s*\(\s*[^,]+,\s*['\"]__",
-     "动态属性修改: setattr __",
-     "HIGH", "避免修改 dunder 属性，可能导致意外行为"),
-    (r"type\s*\(\s*[^)]+\)\s*\.__",
-     "反射操作",
-     "MEDIUM", "确认反射操作的目标可控"),
+    (
+        r"getattr\s*\(\s*[^,]+,\s*['\"]__",
+        "动态属性访问: getattr __",
+        "HIGH",
+        "避免访问 dunder 属性，可能导致意外行为",
+    ),
+    (
+        r"setattr\s*\(\s*[^,]+,\s*['\"]__",
+        "动态属性修改: setattr __",
+        "HIGH",
+        "避免修改 dunder 属性，可能导致意外行为",
+    ),
+    (r"type\s*\(\s*[^)]+\)\s*\.__", "反射操作", "MEDIUM", "确认反射操作的目标可控"),
 ]
 
 # 敏感信息模式: (正则, 描述)
 SECRET_PATTERNS = [
-    (r"(?i)(password|passwd|pwd)\s*=\s*['\"][^'\"]{4,}['\"]",
-     "硬编码密码 (password=)"),
-    (r"(?i)(api[_-]?key|apikey)\s*=\s*['\"][^'\"]{8,}['\"]",
-     "硬编码 API Key"),
-    (r"(?i)(secret|token|auth)\s*=\s*['\"][^'\"]{8,}['\"]",
-     "硬编码密钥/令牌 (secret/token/auth=)"),
-    (r"(?i)(sk-|pk_)[a-zA-Z0-9]{20,}",
-     "疑似 OpenAI / Stripe API Key"),
-    (r"ghp_[a-zA-Z0-9]{36}",
-     "GitHub Personal Access Token"),
-    (r"gho_[a-zA-Z0-9]{36}",
-     "GitHub OAuth Token"),
-    (r"glpat-[a-zA-Z0-9\-]{20,}",
-     "GitLab Personal Access Token"),
-    (r"(?i)AKIA[0-9A-Z]{16}",
-     "AWS Access Key"),
-    (r"(?i)AIza[0-9A-Za-z\-_]{35}",
-     "Google API Key"),
-    (r"-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----",
-     "私钥文件内容"),
+    (r"(?i)(password|passwd|pwd)\s*=\s*['\"][^'\"]{4,}['\"]", "硬编码密码 (password=)"),
+    (r"(?i)(api[_-]?key|apikey)\s*=\s*['\"][^'\"]{8,}['\"]", "硬编码 API Key"),
+    (
+        r"(?i)(secret|token|auth)\s*=\s*['\"][^'\"]{8,}['\"]",
+        "硬编码密钥/令牌 (secret/token/auth=)",
+    ),
+    (r"(?i)(sk-|pk_)[a-zA-Z0-9]{20,}", "疑似 OpenAI / Stripe API Key"),
+    (r"ghp_[a-zA-Z0-9]{36}", "GitHub Personal Access Token"),
+    (r"gho_[a-zA-Z0-9]{36}", "GitHub OAuth Token"),
+    (r"glpat-[a-zA-Z0-9\-]{20,}", "GitLab Personal Access Token"),
+    (r"(?i)AKIA[0-9A-Z]{16}", "AWS Access Key"),
+    (r"(?i)AIza[0-9A-Za-z\-_]{35}", "Google API Key"),
+    (r"-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----", "私钥文件内容"),
 ]
 
 
 # ─── GitHub 交互 ─────────────────────────────────────────
+
 
 def get_event_payload():
     """读取 GitHub Actions 事件 payload"""
@@ -170,10 +214,18 @@ def get_pr_changed_files():
     changed_files = []
     try:
         result = subprocess.run(
-            ["gh", "api", f"repos/{repo}/pulls/{payload['number']}/files",
-             "--paginate", "--jq", '.[].filename'],
-            capture_output=True, text=True, timeout=30,
-            env={**os.environ, "GH_TOKEN": token}
+            [
+                "gh",
+                "api",
+                f"repos/{repo}/pulls/{payload['number']}/files",
+                "--paginate",
+                "--jq",
+                ".[].filename",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env={**os.environ, "GH_TOKEN": token},
         )
         if result.returncode == 0:
             filenames = result.stdout.strip().split("\n")
@@ -182,15 +234,25 @@ def get_pr_changed_files():
                 if fn and fn.endswith(".py"):
                     # 获取文件内容
                     content_result = subprocess.run(
-                        ["gh", "api", f"repos/{repo}/contents/{fn}",
-                         "--jq", '.content'],
-                        capture_output=True, text=True, timeout=30,
-                        env={**os.environ, "GH_TOKEN": token}
+                        [
+                            "gh",
+                            "api",
+                            f"repos/{repo}/contents/{fn}",
+                            "--jq",
+                            ".content",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        env={**os.environ, "GH_TOKEN": token},
                     )
                     if content_result.returncode == 0:
                         import base64
+
                         try:
-                            content = base64.b64decode(content_result.stdout.strip()).decode("utf-8")
+                            content = base64.b64decode(
+                                content_result.stdout.strip()
+                            ).decode("utf-8")
                             changed_files.append((fn, content))
                         except Exception:
                             pass
@@ -202,25 +264,29 @@ def get_pr_changed_files():
 
 # ─── 代码提取 ────────────────────────────────────────────
 
+
 def extract_code_from_markdown(text):
     """从 Markdown 中提取代码块，返回 [(语言, 代码, 起始行), ...]"""
     blocks = []
     for match in re.finditer(r"```(\w*)\n(.*?)```", text, re.DOTALL):
         lang = match.group(1) or "text"
         code = match.group(2)
-        line_no = text[:match.start()].count("\n") + 1
+        line_no = text[: match.start()].count("\n") + 1
         blocks.append((lang, code, line_no))
     return blocks
 
 
 # ─── 检查引擎 ────────────────────────────────────────────
 
+
 def run_bandit(code_path):
     """Bandit 安全扫描"""
     try:
         result = subprocess.run(
             ["bandit", "-f", "json", "-ll", "-r", code_path],
-            capture_output=True, text=True, timeout=60
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         if result.stdout.strip():
             data = json.loads(result.stdout)
@@ -235,7 +301,9 @@ def run_ruff(code_path):
     try:
         result = subprocess.run(
             ["ruff", "check", "--output-format=json", code_path],
-            capture_output=True, text=True, timeout=60
+            capture_output=True,
+            text=True,
+            timeout=60,
         )
         if result.stdout.strip():
             return json.loads(result.stdout)
@@ -249,9 +317,15 @@ def run_pylint(code_path):
     # 先生成 pylint 配置禁用过于严格的规则
     try:
         result = subprocess.run(
-            ["pylint", "--output-format=json", "--disable=C0114,C0115,C0116,C0301,C0303,C0304,C0305,W0611,W0612,W0613,W0621,W0622,R0401,R0801,R0901,R0903,R0911,R0912,R0913,R0914,R0915,R1702,R1705,E0401,E1101,W0603",
-             code_path],
-            capture_output=True, text=True, timeout=120
+            [
+                "pylint",
+                "--output-format=json",
+                "--disable=C0114,C0115,C0116,C0301,C0303,C0304,C0305,W0611,W0612,W0613,W0621,W0622,R0401,R0801,R0901,R0903,R0911,R0912,R0913,R0914,R0915,R1702,R1705,E0401,E1101,W0603",
+                code_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         if result.stdout.strip():
             return json.loads(result.stdout)
@@ -269,15 +343,17 @@ def check_malicious(code):
             # 计算行号
             lines = []
             for m in matches:
-                line = code[:m.start()].count("\n") + 1
+                line = code[: m.start()].count("\n") + 1
                 lines.append(line)
-            findings.append({
-                "desc": desc,
-                "severity": severity,
-                "lines": lines[:3],  # 最多显示3处
-                "fix": fix,
-                "count": len(matches),
-            })
+            findings.append(
+                {
+                    "desc": desc,
+                    "severity": severity,
+                    "lines": lines[:3],  # 最多显示3处
+                    "fix": fix,
+                    "count": len(matches),
+                }
+            )
     return findings
 
 
@@ -289,14 +365,16 @@ def check_secrets(code):
         if matches:
             lines = []
             for m in matches:
-                line = code[:m.start()].count("\n") + 1
+                line = code[: m.start()].count("\n") + 1
                 lines.append(line)
             # 脱敏显示匹配内容
-            findings.append({
-                "desc": desc,
-                "lines": lines[:3],
-                "count": len(matches),
-            })
+            findings.append(
+                {
+                    "desc": desc,
+                    "lines": lines[:3],
+                    "count": len(matches),
+                }
+            )
     return findings
 
 
@@ -331,6 +409,7 @@ def analyze_complexity(code):
 
 
 # ─── 评分系统 ────────────────────────────────────────────
+
 
 def calculate_score(malicious, secrets, bandit, ruff, pylint, complexity):
     """计算代码评分 (0-100)"""
@@ -388,9 +467,12 @@ def calculate_score(malicious, secrets, bandit, ruff, pylint, complexity):
 
 # ─── 报告生成 ────────────────────────────────────────────
 
+
 def severity_icon(severity):
     """根据严重等级返回图标"""
-    return {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(severity, "⚪")
+    return {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(
+        severity, "⚪"
+    )
 
 
 def score_badge(score):
@@ -405,9 +487,21 @@ def score_badge(score):
         return "🔴 不合格"
 
 
-def generate_report(username, code_name, code_content, malicious, secrets, bandit, ruff, pylint, complexity):
+def generate_report(
+    username,
+    code_name,
+    code_content,
+    malicious,
+    secrets,
+    bandit,
+    ruff,
+    pylint,
+    complexity,
+):
     """生成单个代码块的审核报告"""
-    score, deductions = calculate_score(malicious, secrets, bandit, ruff, pylint, complexity)
+    score, deductions = calculate_score(
+        malicious, secrets, bandit, ruff, pylint, complexity
+    )
     report = []
 
     # 标题 - 新格式
@@ -457,7 +551,9 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
             report.append(f"#### {icon} {finding['desc']}")
             report.append(f"- **严重等级**: {finding['severity']}")
             report.append(f"- **出现次数**: {finding['count']} 次")
-            report.append(f"- **行号**: {', '.join(str(ln) for ln in finding['lines'])}")
+            report.append(
+                f"- **行号**: {', '.join(str(ln) for ln in finding['lines'])}"
+            )
             report.append(f"- **修复建议**: {finding['fix']}")
             report.append("")
         report.append("</details>")
@@ -469,7 +565,9 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("<summary><b>🔑 敏感信息检测（点击展开详情）</b></summary>")
         report.append("")
         for finding in secrets:
-            report.append(f"- **{finding['desc']}**: 出现 {finding['count']} 次，行号 {', '.join(str(ln) for ln in finding['lines'])}")
+            report.append(
+                f"- **{finding['desc']}**: 出现 {finding['count']} 次，行号 {', '.join(str(ln) for ln in finding['lines'])}"
+            )
         report.append("")
         report.append("</details>")
         report.append("")
@@ -481,7 +579,9 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("")
         for issue in bandit[:10]:
             sev = issue.get("issue_severity", "LOW")
-            report.append(f"- {severity_icon(sev)} **{issue.get('issue_text', '?')}** (行 {issue.get('line_number', '?')}, {issue.get('issue_cwe', {}).get('id', '')})")
+            report.append(
+                f"- {severity_icon(sev)} **{issue.get('issue_text', '?')}** (行 {issue.get('line_number', '?')}, {issue.get('issue_cwe', {}).get('id', '')})"
+            )
         if len(bandit) > 10:
             report.append(f"- *...还有 {len(bandit) - 10} 个问题*")
         report.append("")
@@ -495,7 +595,9 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("")
         for item in ruff[:10]:
             loc = item.get("location", {})
-            report.append(f"- {item.get('type', '?')} 行 {loc.get('row', '?')}: {item.get('message', '')} ({item.get('code', '')})")
+            report.append(
+                f"- {item.get('type', '?')} 行 {loc.get('row', '?')}: {item.get('message', '')} ({item.get('code', '')})"
+            )
         if len(ruff) > 10:
             report.append(f"- *...还有 {len(ruff) - 10} 个问题*")
         report.append("")
@@ -510,7 +612,9 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("")
         for item in bug_items[:10]:
             icon = "❌" if item.get("type") == "error" else "⚠️"
-            report.append(f"- {icon} 行 {item.get('line', '?')}, 列 {item.get('column', '?')}: {item.get('message', '')} ({item.get('symbol', '')})")
+            report.append(
+                f"- {icon} 行 {item.get('line', '?')}, 列 {item.get('column', '?')}: {item.get('message', '')} ({item.get('symbol', '')})"
+            )
         if len(bug_items) > 10:
             report.append(f"- *...还有 {len(bug_items) - 10} 个问题*")
         report.append("")
@@ -543,7 +647,9 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         if total_high + total_medium > 0:
             report.append(f"建议修复 {total_high + total_medium} 个中高危问题后合并。")
     elif score >= SCORE_WARN and total_critical == 0:
-        report.append(f"⚠️ **审核通过（有警告）** — 代码评分 **{score}/100**，建议修复后合并。")
+        report.append(
+            f"⚠️ **审核通过（有警告）** — 代码评分 **{score}/100**，建议修复后合并。"
+        )
         report.append(f"共发现 {total_high + total_medium} 个高危/中危问题。")
     else:
         report.append(f"❌ **审核未通过** — 代码评分 **{score}/100**，存在严重问题。")
@@ -554,12 +660,15 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
 
     report.append("")
     report.append("---")
-    report.append("*此报告由 Code Review Bot v2.0 自动生成 | 审核标准参考 OWASP Top 10 + PEP 8*")
+    report.append(
+        "*此报告由 Code Review Bot v2.0 自动生成 | 审核标准参考 OWASP Top 10 + PEP 8*"
+    )
 
     return "\n".join(report), score
 
 
 # ─── 主函数 ──────────────────────────────────────────────
+
 
 def main():
     event_name = os.environ.get("EVENT_NAME", "unknown")
@@ -583,7 +692,9 @@ def main():
             sys.exit(1)
 
         for filename, content in changed_files:
-            with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False, encoding="utf-8") as f:
+            with tempfile.NamedTemporaryFile(
+                suffix=".py", mode="w", delete=False, encoding="utf-8"
+            ) as f:
                 f.write(content)
                 tmp_path = f.name
 
@@ -595,7 +706,17 @@ def main():
                 pylint = run_pylint(tmp_path)
                 complexity = analyze_complexity(content)
 
-                report_text, score = generate_report(username, filename, content, malicious, secrets, bandit, ruff, pylint, complexity)
+                report_text, score = generate_report(
+                    username,
+                    filename,
+                    content,
+                    malicious,
+                    secrets,
+                    bandit,
+                    ruff,
+                    pylint,
+                    complexity,
+                )
                 all_reports.append(report_text)
                 total_score += score
                 code_count += 1
@@ -618,7 +739,9 @@ def main():
             ext = {"python": ".py", "py": ".py"}.get(lang.lower(), ".txt")
             code_name = f"代码块 #{i + 1} ({lang})"
 
-            with tempfile.NamedTemporaryFile(suffix=ext, mode="w", delete=False, encoding="utf-8") as f:
+            with tempfile.NamedTemporaryFile(
+                suffix=ext, mode="w", delete=False, encoding="utf-8"
+            ) as f:
                 f.write(code)
                 tmp_path = f.name
 
@@ -636,7 +759,17 @@ def main():
 
                 complexity = analyze_complexity(code)
 
-                report_text, score = generate_report(username, code_name, code, malicious, secrets, bandit_results, ruff_results, pylint_results, complexity)
+                report_text, score = generate_report(
+                    username,
+                    code_name,
+                    code,
+                    malicious,
+                    secrets,
+                    bandit_results,
+                    ruff_results,
+                    pylint_results,
+                    complexity,
+                )
                 all_reports.append(report_text)
                 total_score += score
                 code_count += 1

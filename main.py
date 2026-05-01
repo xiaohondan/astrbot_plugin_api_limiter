@@ -187,7 +187,7 @@ def _get_local_ip() -> str:
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断、白/黑名单、分时段限频、群聊独立配额七大功能",
     "2.4.1",
-    "https://github.com/xiaohondan/astrbot_plugin_api_limiter"
+    "https://github.com/xiaohondan/astrbot_plugin_api_limiter",
 )
 class APIRateLimiter(Star):
     """API调用限频器 - 防止API过度调用导致余额不足"""
@@ -287,9 +287,7 @@ class APIRateLimiter(Star):
                     f"字段 '{field_name}' 格式错误: '{time_str}'，必须是整数"
                 )
         if total < 0 or total > 1439:
-            raise ValueError(
-                f"字段 '{field_name}' 时间值 {total} 超出范围 (0-1439)"
-            )
+            raise ValueError(f"字段 '{field_name}' 时间值 {total} 超出范围 (0-1439)")
         return total
 
     def _is_in_quiet_hours(self) -> bool:
@@ -316,9 +314,7 @@ class APIRateLimiter(Star):
             sender_id = str(event.get_sender_id())
         except Exception:
             return False
-        whitelist_ids = [
-            uid.strip() for uid in whitelist_str.split(",") if uid.strip()
-        ]
+        whitelist_ids = [uid.strip() for uid in whitelist_str.split(",") if uid.strip()]
         return sender_id in whitelist_ids
 
     # ==================== 黑名单 ====================
@@ -332,9 +328,7 @@ class APIRateLimiter(Star):
             sender_id = str(event.get_sender_id())
         except Exception:
             return False
-        blacklist_ids = [
-            uid.strip() for uid in blacklist_str.split(",") if uid.strip()
-        ]
+        blacklist_ids = [uid.strip() for uid in blacklist_str.split(",") if uid.strip()]
         return sender_id in blacklist_ids
 
     # ==================== 分时段限频 ====================
@@ -357,9 +351,13 @@ class APIRateLimiter(Star):
                 h = int(hour_str)
                 if h < 0 or h > 23:
                     continue
-                cs = params.get("cooldown_seconds", 0) if isinstance(params, dict) else 0
+                cs = (
+                    params.get("cooldown_seconds", 0) if isinstance(params, dict) else 0
+                )
                 mc = params.get("max_calls", 0) if isinstance(params, dict) else 0
-                cm = params.get("cooldown_minutes", 0) if isinstance(params, dict) else 0
+                cm = (
+                    params.get("cooldown_minutes", 0) if isinstance(params, dict) else 0
+                )
                 result[h] = {
                     "cooldown_seconds": max(0, int(cs)),
                     "max_calls": max(0, int(mc)),
@@ -431,8 +429,7 @@ class APIRateLimiter(Star):
         today = date.today()
         if self._daily_date != today:
             logger.info(
-                f"[API限频器] 新的一天，重置每日配额"
-                f"（昨日调用 {self._daily_count} 次）"
+                f"[API限频器] 新的一天，重置每日配额（昨日调用 {self._daily_count} 次）"
             )
             self._daily_count = 0
             self._daily_date = today
@@ -592,7 +589,7 @@ class APIRateLimiter(Star):
         self._block_logs.append(entry)
         # 保持最大数量
         if len(self._block_logs) > self._max_logs:
-            self._block_logs = self._block_logs[-self._max_logs:]
+            self._block_logs = self._block_logs[-self._max_logs :]
 
     # ==================== 工具方法 ====================
 
@@ -611,9 +608,7 @@ class APIRateLimiter(Star):
             )
             return default
         if value < 0:
-            logger.warning(
-                f"[API限频器] 配置项 '{key}' 为负值（{value}），已修正为 0"
-            )
+            logger.warning(f"[API限频器] 配置项 '{key}' 为负值（{value}），已修正为 0")
             return 0
         return value
 
@@ -759,7 +754,9 @@ class APIRateLimiter(Star):
             self._webui_runner = None
             self._webui_site = None
             logger.error(f"[API限频器] 统计面板启动失败：{e}")
-            yield event.plain_result(f"❌ 统计面板启动失败：端口 {port} 可能被占用\n{e}")
+            yield event.plain_result(
+                f"❌ 统计面板启动失败：端口 {port} 可能被占用\n{e}"
+            )
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("关闭统计面板")
@@ -838,7 +835,9 @@ class APIRateLimiter(Star):
         if timeslots:
             status_parts.append(f"分时段({len(timeslots)}档)")
         if blacklist_str:
-            status_parts.append(f"黑名单({len([u for u in blacklist_str.split(',') if u.strip()])}人)")
+            status_parts.append(
+                f"黑名单({len([u for u in blacklist_str.split(',') if u.strip()])}人)"
+            )
         if group_quotas_str:
             status_parts.append(f"群独立配额({len(group_quotas_str.split(';'))}个群)")
         if status_parts:
@@ -898,7 +897,9 @@ class APIRateLimiter(Star):
         self._daily_count = 0
         self._daily_date = date.today()
         self._daily_warned = False
-        yield event.plain_result(f"🔄 每日配额已重置（剩余 {self._get_daily_limit(event)} 次）")
+        yield event.plain_result(
+            f"🔄 每日配额已重置（剩余 {self._get_daily_limit(event)} 次）"
+        )
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("重置对话")
@@ -937,7 +938,7 @@ class APIRateLimiter(Star):
         text = "\n".join(lines)
         # AstrBot 单条消息有长度限制，分段发送
         chunk_size = 3000
-        chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+        chunks = [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
         for i, chunk in enumerate(chunks):
             if i == len(chunks) - 1:
                 yield event.plain_result(chunk)
@@ -1010,7 +1011,11 @@ class APIRateLimiter(Star):
                 logger.info(
                     f"[API限频器] 对话切断生效：{key} "
                     f"（上限 {quota_limit} 次"
-                    + (f"，冷却 {quota_cooldown} 分钟" if quota_cooldown > 0 else "，持续阻断")
+                    + (
+                        f"，冷却 {quota_cooldown} 分钟"
+                        if quota_cooldown > 0
+                        else "，持续阻断"
+                    )
                     + "）"
                 )
                 self._add_block_log("对话切断", event)
