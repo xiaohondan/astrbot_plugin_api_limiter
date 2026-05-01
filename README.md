@@ -1,20 +1,28 @@
-<div align="center">
+# API 调用限频器
 
-<img src="./banner.png" alt="Banner">
+<p align="center">
+  <img src="./logo.png" width="120" alt="Logo">
+</p>
 
-**API调用限频器** —— 让你的 AstrBot 机器人不再"疯狂烧钱"
+<p align="center">
+  <strong>让你的 AstrBot 机器人不再"疯狂烧钱"</strong>
+</p>
 
-[中文](./README.md) | [English](./README-en.md) | [日本語](./README-ja.md) | [한국어](./README-ko.md)
+<p align="center">
+  [中文](./README.md) | [English](./README-en.md) | [日本語](./README-ja.md) | [한국어](./README-ko.md)
+</p>
 
-<a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/releases">
-  <img src="https://img.shields.io/github/v/release/xiaohondan/astrbot_plugin_api_limiter?style=flat-square" alt="Release">
-</a>
-<a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter">
-  <img src="https://img.shields.io/badge/AstrBot-Plugin-blue?style=flat-square" alt="AstrBot">
-</a>
-<a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/blob/main/main.py">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
-</a>
+<p align="center">
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/releases">
+    <img src="https://img.shields.io/github/v/release/xiaohondan/astrbot_plugin_api_limiter?style=flat-square" alt="Release">
+  </a>
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter">
+    <img src="https://img.shields.io/badge/AstrBot-Plugin-blue?style=flat-square" alt="AstrBot">
+  </a>
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/blob/main/main.py">
+    <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+  </a>
+</p>
 
 ![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
