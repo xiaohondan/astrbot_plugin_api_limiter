@@ -15,12 +15,12 @@ permissions:
   label: write
 
 jobs:
-  # ── 自动分类：根据 Issue 模板自动打标签 ──
+  # ── 自动分类：根据 Issue 模板自动打标签 + 智能回复 ──
   classify:
     runs-on: ubuntu-latest
     if: github.event_name == 'issues' && github.event.action == 'opened'
     steps:
-      - name: Auto label
+      - name: Auto label & reply
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -28,37 +28,84 @@ jobs:
             const title = context.payload.issue.title;
             const body = context.payload.issue.body || '';
             const issueNumber = context.payload.issue.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
             const labels = [];
+            let replyMessage = '';
 
             if (title.includes('[提交代码]') || title.includes('[代码审核]') || title.includes('[Code Review]')) {
               labels.push('review');
+              replyMessage = `## 🤖 代码审核已提交
+
+              感谢 ${context.payload.issue.user.login} 提交代码！审核机器人正在分析你的代码，请稍候几分钟...
+
+              **审核内容包括：**
+              - 🔒 安全漏洞检测
+              - 📋 代码规范检查
+              - 🐛 潜在 Bug 分析
+              - 🔑 敏感信息扫描
+
+              审核结果将自动评论在下方。
+
+              ---
+              💡 **指令提示：**
+              - 评论 \`@code-review-bot review\` 可重新触发审核
+              - 评论 \`@code-review-bot human\` 可请求人工审核
+              `;
             } else if (title.includes('[Bug]') || title.includes('[bug]')) {
               labels.push('bug');
-            } else if (title.includes('[建议]') || title.includes('[Suggestion]')) {
+              labels.push('triage');
+              replyMessage = `## 🐛 Bug 反馈已收到
+
+              感谢 ${context.payload.issue.user.login} 的反馈！我们已将此 Issue 标记为待处理。
+
+              维护者会尽快查看并回复，请耐心等待。
+
+              ---
+              💡 **指令提示：**
+              - 评论 \`@code-review-bot human\` 可请求人工审核
+              `;
+            } else if (title.includes('[建议]') || title.includes('[Suggestion]') || title.includes('[功能建议]')) {
               labels.push('enhancement');
+              replyMessage = `## 💡 功能建议已收到
+
+              感谢 ${context.payload.issue.user.login} 的建议！我们已记录此功能请求。
+
+              社区成员和 Maintainer 会参与讨论，欢迎补充更多细节。
+
+              ---
+              💡 **指令提示：**
+              - 评论 \`@code-review-bot human\` 可请求人工审核
+              `;
             }
 
             if (labels.length > 0) {
               await github.rest.issues.addLabels({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner, repo,
                 issue_number: issueNumber,
                 labels: labels
+              });
+            }
+
+            if (replyMessage) {
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: issueNumber,
+                body: replyMessage
               });
             }
 
   # ── 代码审核 ──
   review:
     runs-on: ubuntu-latest
-    needs: [classify]
     if: |
-      always() && (
-      (github.event_name == 'issues' && contains(github.event.issue.title, '[提交代码]')) ||
-      (github.event_name == 'issues' && contains(github.event.issue.title, '[Code Review]')) ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@code-review-bot')) ||
-      (github.event_name == 'pull_request')
-      )
+      (github.event_name == 'issues' && (
+        contains(github.event.issue.title, '[提交代码]') ||
+        contains(github.event.issue.title, '[代码审核]') ||
+        contains(github.event.issue.title, '[Code Review]')
+      )) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@code-review-bot'))
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -74,7 +121,47 @@ jobs:
         run: |
           pip install ruff pylint bandit
 
+      - name: Check command type
+        id: cmd
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commentBody = context.payload.comment?.body || '';
+            const isReview = commentBody.includes('@code-review-bot review') || commentBody.includes('@code-review-bot') && !commentBody.includes('human');
+            const isHuman = commentBody.includes('@code-review-bot human');
+            
+            if (isHuman) {
+              // 请求人工审核
+              const issueNumber = context.issue.number || context.payload.issue.number;
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+              
+              await github.rest.issues.addLabels({
+                owner, repo,
+                issue_number: issueNumber,
+                labels: ['human-review']
+              });
+              
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: issueNumber,
+                body: `## 👨‍💻 人工审核请求已提交\n\n已标记为 \`human-review\`，维护者会尽快进行人工审核。\n\n---\n此消息由 Code Review Bot 🤖 自动发送`
+              });
+              
+              core.setOutput('command', 'human');
+              core.setOutput('skip', 'true');
+            } else if (isReview && !commentBody.includes('@code-review-bot review')) {
+              // 只是 @code-review-bot 但没有 review/human 指令
+              core.setOutput('command', 'unknown');
+              core.setOutput('skip', 'false');
+            } else {
+              core.setOutput('command', isReview ? 'review' : 'auto');
+              core.setOutput('skip', 'false');
+            }
+
       - name: Run code review
+        if: steps.cmd.outputs.skip != 'true'
         id: review
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -82,7 +169,22 @@ jobs:
         run: |
           python scripts/code_review.py
 
+      - name: Handle unknown command
+        if: steps.cmd.outputs.command == 'unknown'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issueNumber = context.issue.number || context.payload.issue.number;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## ❓ 未知指令\n\n可用指令：\n- \`@code-review-bot review\` — 重新触发代码审核\n- \`@code-review-bot human\` — 请求人工审核\n\n---\n此消息由 Code Review Bot 🤖 自动发送`
+            });
+
       - name: Comment review report
+        if: steps.cmd.outputs.skip != 'true' && steps.review.outcome == 'success'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -99,6 +201,7 @@ jobs:
             });
 
       - name: Apply score label
+        if: steps.cmd.outputs.skip != 'true' && steps.review.outcome == 'success'
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -110,7 +213,7 @@ jobs:
             const repo = context.repo.repo;
 
             // 移除旧的评分标签
-            const oldLabels = ['review-passed', 'review-failed', 'review-warning', 'score-excellent', 'score-good', 'score-needs-work', 'score-poor'];
+            const oldLabels = ['review-passed', 'review-failed', 'review-warning', 'score-excellent', 'score-good', 'score-needs-work', 'score-poor', 'human-review'];
             try {
               const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: issueNumber });
               for (const label of oldLabels) {
