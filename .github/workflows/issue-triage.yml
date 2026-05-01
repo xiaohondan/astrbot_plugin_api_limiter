@@ -80,19 +80,19 @@ jobs:
             const title = context.payload.issue.title.toLowerCase();
             const isBug = /bug|错误|崩溃|闪退|报错|异常/i.test(title + ' ' + (context.payload.issue.body || '').toLowerCase());
 
-            let comment = '## 👋 Thanks for your feedback!\n\n';
-            comment += 'We will review this issue as soon as possible.\n\n';
+            let comment = '## 👋 感谢反馈！\n\n';
+            comment += '我们会尽快处理这个 Issue。\n\n';
 
             if (isBug) {
-              comment += '### Bug Report Checklist\n';
-              comment += 'To help us fix this faster, please make sure you include:\n';
-              comment += '- Plugin version\n';
-              comment += '- AstrBot version\n';
-              comment += '- Steps to reproduce\n';
-              comment += '- Relevant logs or screenshots\n\n';
+              comment += '### Bug 报告清单\n';
+              comment += '为了更快定位问题，请补充以下信息：\n';
+              comment += '- 插件版本（plugin version）\n';
+              comment += '- AstrBot 版本\n';
+              comment += '- 复现步骤\n';
+              comment += '- 相关日志或截图\n\n';
             }
 
-            comment += '> This is an automated message from NekoAiDev Bot 🐱';
+            comment += '> 此消息由 NekoAiDev Bot 🐱 自动发送';
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,

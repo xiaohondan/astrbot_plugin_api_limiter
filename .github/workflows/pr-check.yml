@@ -40,16 +40,16 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.pull_request.number,
-                body: `## ⚠️ PR Title Format Notice\n\n` +
-                      `Your PR title doesn't follow the conventional format.\n\n` +
-                      `**Recommended prefixes:**\n` +
-                      `- \`feat:\` - New feature\n` +
-                      `- \`fix:\` - Bug fix\n` +
-                      `- \`docs:\` - Documentation\n` +
-                      `- \`refactor:\` - Code refactoring\n` +
-                      `- \`chore:\` - Maintenance\n\n` +
-                      `Example: \`feat: add auto-label workflow\`\n\n` +
-                      `> This is just a suggestion, not a blocker.`
+                body: `## ⚠️ PR 标题格式提醒\n\n` +
+                      `你的 PR 标题不符合约定格式。\n\n` +
+                      `**推荐前缀：**\n` +
+                      `- \`feat:\` - 新功能\n` +
+                      `- \`fix:\` - 修复 Bug\n` +
+                      `- \`docs:\` - 文档更新\n` +
+                      `- \`refactor:\` - 代码重构\n` +
+                      `- \`chore:\` - 维护工作\n\n` +
+                      `示例：\`feat: 添加自动标签工作流\`\n\n` +
+                      `> 这只是建议，不会影响合并。`
               });
             }
 
@@ -66,11 +66,11 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.pull_request.number,
-                body: `## 💡 Tip: Link Related Issues\n\n` +
-                      `This PR doesn't seem to reference any issues.\n\n` +
-                      `You can use these keywords to auto-close issues when PR is merged:\n` +
-                      `- \`Fixes #123\` or \`Closes #123\`\n` +
-                      `- \`关闭 #123\` or \`修复 #123\`\n\n` +
-                      `> This is just a suggestion, not a blocker.`
+                body: `## 💡 提示：关联 Issue\n\n` +
+                      `这个 PR 似乎没有关联任何 Issue。\n\n` +
+                      `你可以在描述中添加以下关键词，PR 合并时自动关闭对应 Issue：\n` +
+                      `- \`Fixes #123\` 或 \`Closes #123\`\n` +
+                      `- \`关闭 #123\` 或 \`修复 #123\`\n\n` +
+                      `> 这只是建议，不会影响合并。`
               });
             }
