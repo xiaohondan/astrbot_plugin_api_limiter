@@ -19,8 +19,19 @@
   <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter">
     <img src="https://img.shields.io/badge/AstrBot-Plugin-blue?style=flat-square" alt="AstrBot">
   </a>
-  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/blob/main/main.py">
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+  </a>
+  <img src="https://img.shields.io/badge/Python-3.10.14+-blue?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Platform-Windows%7CLinux%7CmacOS-lightgrey?style=flat-square" alt="Platform">
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/pulls">
+    <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
+  </a>
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/xiaohondan/astrbot_plugin_api_limiter?style=flat-square" alt="Contributors">
+  </a>
+  <a href="https://github.com/xiaohondan/astrbot_plugin_api_limiter/commits/main">
+    <img src="https://img.shields.io/github/last-commit/xiaohondan/astrbot_plugin_api_limiter?style=flat-square&label=last%20commit" alt="Last Commit">
   </a>
 </p>
 
