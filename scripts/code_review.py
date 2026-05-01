@@ -18,8 +18,6 @@ import json
 import re
 import subprocess
 import tempfile
-import hashlib
-import math
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -146,6 +144,15 @@ def get_issue_content():
     return title, body, username
 
 
+def get_pr_username():
+    """获取 PR 提交者的用户名"""
+    payload = get_event_payload()
+    if not payload or "pull_request" not in payload:
+        return "未知用户"
+    user = payload["pull_request"].get("user", {})
+    return user.get("login", "未知用户")
+
+
 def get_pr_changed_files():
     """获取 PR 中变更的文件内容"""
     payload = get_event_payload()
@@ -153,7 +160,6 @@ def get_pr_changed_files():
         return []
 
     pr = payload["pull_request"]
-    base_sha = pr.get("base", {}).get("sha", "")
 
     token = os.environ.get("GITHUB_TOKEN", "")
     repo = os.environ.get("GITHUB_REPOSITORY", "")
@@ -298,10 +304,9 @@ def check_secrets(code):
 
 def analyze_complexity(code):
     """代码复杂度分析"""
-    lines = code.strip().split("\n")
     total_lines = len(lines)
-    blank_lines = sum(1 for l in lines if not l.strip())
-    comment_lines = sum(1 for l in lines if l.strip().startswith("#"))
+    blank_lines = sum(1 for line in lines if not line.strip())
+    comment_lines = sum(1 for line in lines if line.strip().startswith("#"))
     code_lines = total_lines - blank_lines - comment_lines
 
     # 估算圈复杂度（简化版：统计分支关键字）
@@ -335,16 +340,16 @@ def calculate_score(malicious, secrets, bandit, ruff, pylint, complexity):
 
     # 恶意代码扣分（重罚）
     severity_scores = {"CRITICAL": 25, "HIGH": 15, "MEDIUM": 8, "LOW": 3}
-    for f in malicious:
-        d = severity_scores.get(f["severity"], 5)
+    for finding in malicious:
+        d = severity_scores.get(finding["severity"], 5)
         score -= d
-        deductions.append(f"{f['desc']}: -{d} ({f['severity']})")
+        deductions.append(f"{finding['desc']}: -{d} ({finding['severity']})")
 
     # 敏感信息扣分
-    for f in secrets:
+    for finding in secrets:
         d = 15
         score -= d
-        deductions.append(f"{f['desc']}: -{d}")
+        deductions.append(f"{finding['desc']}: -{d}")
 
     # Bandit 扣分
     for issue in bandit:
@@ -417,10 +422,10 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
     report.append("")
 
     # 总览卡片
-    total_critical = sum(1 for f in malicious if f["severity"] == "CRITICAL")
-    total_high = sum(1 for f in malicious if f["severity"] == "HIGH")
-    total_medium = sum(1 for f in malicious if f["severity"] == "MEDIUM")
-    total_low = sum(1 for f in malicious if f["severity"] == "LOW")
+    total_critical = sum(1 for item in malicious if item["severity"] == "CRITICAL")
+    total_high = sum(1 for item in malicious if item["severity"] == "HIGH")
+    total_medium = sum(1 for item in malicious if item["severity"] == "MEDIUM")
+    total_low = sum(1 for item in malicious if item["severity"] == "LOW")
     total_secrets = len(secrets)
     total_bandit = len(bandit)
     total_ruff = len(ruff)
@@ -428,8 +433,8 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
 
     report.append("### 📊 审核总览")
     report.append("")
-    report.append(f"| 检查项 | 结果 |")
-    report.append(f"|--------|------|")
+    report.append("| 检查项 | 结果 |")
+    report.append("|--------|------|")
     report.append(f"| 🔴 严重问题 | {total_critical} |")
     report.append(f"| 🟠 高危问题 | {total_high} |")
     report.append(f"| 🟡 中危问题 | {total_medium} |")
@@ -448,13 +453,13 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("<details>")
         report.append("<summary><b>⚠️ 恶意代码检测（点击展开详情）</b></summary>")
         report.append("")
-        for f in malicious:
-            icon = severity_icon(f["severity"])
-            report.append(f"#### {icon} {f['desc']}")
-            report.append(f"- **严重等级**: {f['severity']}")
-            report.append(f"- **出现次数**: {f['count']} 次")
-            report.append(f"- **行号**: {', '.join(str(l) for l in f['lines'])}")
-            report.append(f"- **修复建议**: {f['fix']}")
+        for finding in malicious:
+            icon = severity_icon(finding["severity"])
+            report.append(f"#### {icon} {finding['desc']}")
+            report.append(f"- **严重等级**: {finding['severity']}")
+            report.append(f"- **出现次数**: {finding['count']} 次")
+            report.append(f"- **行号**: {', '.join(str(ln) for ln in finding['lines'])}")
+            report.append(f"- **修复建议**: {finding['fix']}")
             report.append("")
         report.append("</details>")
         report.append("")
@@ -464,8 +469,8 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("<details>")
         report.append("<summary><b>🔑 敏感信息检测（点击展开详情）</b></summary>")
         report.append("")
-        for f in secrets:
-            report.append(f"- **{f['desc']}**: 出现 {f['count']} 次，行号 {', '.join(str(l) for l in f['lines'])}")
+        for finding in secrets:
+            report.append(f"- **{finding['desc']}**: 出现 {finding['count']} 次，行号 {', '.join(str(ln) for ln in finding['lines'])}")
         report.append("")
         report.append("</details>")
         report.append("")
@@ -518,8 +523,8 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
         report.append("<details>")
         report.append("<summary><b>📝 评分扣分明细（点击展开）</b></summary>")
         report.append("")
-        report.append(f"| 扣分项 | 分值 |")
-        report.append(f"|--------|------|")
+        report.append("| 扣分项 | 分值 |")
+        report.append("|--------|------|")
         for d in deductions:
             # 提取 -N
             match = re.search(r"(-\d+)", d)
@@ -558,7 +563,6 @@ def generate_report(username, code_name, code_content, malicious, secrets, bandi
 # ─── 主函数 ──────────────────────────────────────────────
 
 def main():
-    payload = get_event_payload()
     event_name = os.environ.get("EVENT_NAME", "unknown")
 
     # 获取用户名

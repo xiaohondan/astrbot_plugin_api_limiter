@@ -31,7 +31,7 @@ jobs:
 
             const labels = [];
 
-            if (title.includes('[代码审核]') || title.includes('[Code Review]')) {
+            if (title.includes('[提交代码]') || title.includes('[代码审核]') || title.includes('[Code Review]')) {
               labels.push('review');
             } else if (title.includes('[Bug]') || title.includes('[bug]')) {
               labels.push('bug');
@@ -51,12 +51,14 @@ jobs:
   # ── 代码审核 ──
   review:
     runs-on: ubuntu-latest
-    needs: classify
+    needs: [classify]
     if: |
+      always() && (
       (github.event_name == 'issues' && contains(github.event.issue.title, '[提交代码]')) ||
       (github.event_name == 'issues' && contains(github.event.issue.title, '[Code Review]')) ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@code-review-bot')) ||
       (github.event_name == 'pull_request')
+      )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
