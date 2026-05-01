@@ -517,7 +517,7 @@ class APIRateLimiter(Star):
         """检查对话切断限制，返回 True 表示应拦截"""
         quota_mode: str = self.config.get("quota_mode", "")
         quota_limit = self._safe_get_int("quota_limit", 0)
-        quota_cooldown = self._safe_get_int("quota_cooldown_minutes", 0)
+        quota_cooldown = self._safe_get_int("quota_cooldown_minutes", 0)  # noqa: F841
 
         if not quota_mode or quota_limit <= 0:
             return False
@@ -926,7 +926,7 @@ class APIRateLimiter(Star):
             return
 
         lines = [
-            f"API限频器 拦截日志",
+            "API限频器 拦截日志",
             f"导出时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"共 {len(self._block_logs)} 条记录",
             "─" * 40,

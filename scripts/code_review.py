@@ -159,8 +159,6 @@ def get_pr_changed_files():
     if not payload or "pull_request" not in payload:
         return []
 
-    pr = payload["pull_request"]
-
     token = os.environ.get("GITHUB_TOKEN", "")
     repo = os.environ.get("GITHUB_REPOSITORY", "")
 
@@ -304,6 +302,7 @@ def check_secrets(code):
 
 def analyze_complexity(code):
     """代码复杂度分析"""
+    lines = code.strip().split("\n")
     total_lines = len(lines)
     blank_lines = sum(1 for line in lines if not line.strip())
     comment_lines = sum(1 for line in lines if line.strip().startswith("#"))
