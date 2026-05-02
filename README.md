@@ -51,7 +51,7 @@
 
 ---
 
-仓库已迁移，请**[访问](https://github.com/NekoAiDev/astrbot_plugin_api_limiter)**)**
+仓库已迁移，请[访问](https://github.com/NekoAiDev/astrbot_plugin_api_limiter)
 <details>
 <summary><h2>✨ 功能一览</h2></summary>
 
