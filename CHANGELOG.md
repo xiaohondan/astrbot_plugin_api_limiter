@@ -25,9 +25,25 @@
 
 ## [2.4.5] - 2026-05-01
 
+### 新增
+
+- **代码审核工作流**：添加 GitHub Actions 代码审核机器人和脚本 v2.1，支持 Issue 和 PR 触发审核，检测恶意代码、敏感信息、安全漏洞，生成带评分的审核报告，支持 `@code-review-bot` 评论触发重新审核
+- **CI 工作流**：新增 GitHub Actions 工作流——Issue 分类（issue-triage.yml）、PR 检查（pr-check.yml）、Python Lint（python-lint.yml）
+
+### 修复
+
+- 修复审核脚本 bug：添加缺失的 `get_pr_username` 函数，移除未使用的 `hashlib`/`math` 导入
+- 修复工作流触发条件：移除 `needs` 依赖导致非 Issue 事件无法触发审核的问题
+- 修复 lint 错误：恢复误删的 `lines` 变量定义，移除未使用的 `pr` 变量，`main.py` 添加 `noqa` 注释
+- 修复工作流权限：移除无效的 `label: write` 权限
+
 ### 变更
 
+- 重构代码审核工作流：去掉 `needs` 依赖，添加指令触发和智能回复
+- 添加 `workflow_dispatch` 触发器支持手动测试
+- 添加 Stars 和 Forks 徽章
 - 添加作者 Badge（小红蛋）
+- Ruff 自动格式化
 - 版本号升级至 2.4.5
 
 ---
@@ -36,6 +52,10 @@
 
 ### 变更
 
+- README 头部改为 H1 + logo 居中 + 副标题 + Badges 风格
+- 修复 README 中 `banner.png` 引用错误，移除多余 `</div>` 标签
+- 在 README 中添加更多 shields.io 徽章（Python 版本、平台、PRs、Contributors、Last Commit）
+- 添加 GitHub 风格 Badges 到所有语言 README（中/英/日/韩）
 - 版本号升级至 2.4.4
 
 ---
@@ -48,9 +68,6 @@
 
 ### 变更
 
-- README 头部改为 H1 + logo 居中 + 副标题 + Badges 风格
-- 在 README 中添加更多 shields.io 徽章（Python 版本、平台、PRs、Contributors、Last Commit）
-- 添加 GitHub 风格 Badges 到所有语言 README
 - 版本号升级至 2.4.3
 
 ---
