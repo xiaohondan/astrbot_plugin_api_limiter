@@ -1,6 +1,8 @@
 import asyncio
 import json
+import secrets
 import socket
+import string
 import time
 from datetime import datetime, date
 from aiohttp import web
@@ -113,7 +115,7 @@ STATS_HTML = """<!DOCTYPE html>
     <div class="section-title">📝 最近拦截记录</div>
     <div class="section-content" id="log_list">暂无记录</div>
   </div>
-  <div class="footer">API限频器 v2.4.1 · by 小红蛋</div>
+  <div class="footer">API限频器 v2.4.6 · by 小红蛋</div>
 </div>
 <script>
 const data = __DATA__;
@@ -182,12 +184,18 @@ def _get_local_ip() -> str:
         return "127.0.0.1"
 
 
+def _generate_token(length: int = 32) -> str:
+    """生成安全的随机 token"""
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
 @register(
     "astrbot_plugin_api_limiter",
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断、白/黑名单、分时段限频、群聊独立配额七大功能",
-    "2.4.1",
-    "https://github.com/xiaohondan/astrbot_plugin_api_limiter",
+    "2.4.6",
+    "https://github.com/NekoAiDev/astrbot_plugin_api_limiter",
 )
 class APIRateLimiter(Star):
     """API调用限频器 - 防止API过度调用导致余额不足"""
@@ -693,24 +701,31 @@ class APIRateLimiter(Star):
             "logs": logs,
         }
 
+    async def _get_stats_token(self) -> str:
+        """获取统计面板 token，为空时自动生成并保存"""
+        token = self.config.get("stats_token", "")
+        if not token:
+            token = _generate_token()
+            self.config.set("stats_token", token)
+            logger.info(f"[API限频器] 已自动生成统计面板 token: {token}")
+        return token
+
     async def _webui_handler(self, request: web.Request) -> web.Response:
         """WebUI 统计面板 HTTP 处理器"""
-        token = self.config.get("stats_token", "")
-        if token:
-            req_token = request.query.get("token", "")
-            if req_token != token:
-                return web.Response(text="403 Forbidden", status=403)
+        token = await self._get_stats_token()
+        req_token = request.query.get("token", "")
+        if req_token != token:
+            return web.Response(text="403 Forbidden", status=403)
         data = self._build_stats_data()
         html = STATS_HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False))
         return web.Response(text=html, content_type="text/html", charset="utf-8")
 
     async def _webui_api_handler(self, request: web.Request) -> web.Response:
         """WebUI API 接口"""
-        token = self.config.get("stats_token", "")
-        if token:
-            req_token = request.query.get("token", "")
-            if req_token != token:
-                return web.json_response({"error": "Forbidden"}, status=403)
+        token = await self._get_stats_token()
+        req_token = request.query.get("token", "")
+        if req_token != token:
+            return web.json_response({"error": "Forbidden"}, status=403)
         data = self._build_stats_data()
         return web.json_response(data)
 
@@ -719,17 +734,19 @@ class APIRateLimiter(Star):
     async def webui_start(self, event: AstrMessageEvent):
         """开启统计面板"""
         if self._webui_runner is not None:
-            local_ip = _get_local_ip()
-            token = self.config.get("stats_token", "")
-            token_param = f"?token={token}" if token else ""
+            token = await self._get_stats_token()
             yield event.plain_result(
                 f"📊 统计面板已在运行中\n"
-                f"🔗 本地访问：http://localhost:{self._webui_port}{token_param}\n"
-                f"🔗 局域网：http://{local_ip}:{self._webui_port}{token_param}"
+                f"🔗 访问地址：http://localhost:{self._webui_port}?token={token}\n"
+                f"💡 如需局域网访问，请在配置中设置 stats_bind 为 0.0.0.0"
             )
             return
 
         port = self._safe_get_int("stats_port", 6285)
+        bind_addr: str = self.config.get("stats_bind", "127.0.0.1").strip()
+        if bind_addr not in ("127.0.0.1", "0.0.0.0"):
+            logger.warning(f"[API限频器] stats_bind 值无效（{bind_addr}），已回退到 127.0.0.1")
+            bind_addr = "127.0.0.1"
         app = web.Application()
         app.router.add_get("/", self._webui_handler)
         app.router.add_get("/api", self._webui_api_handler)
@@ -737,19 +754,26 @@ class APIRateLimiter(Star):
 
         try:
             await self._webui_runner.setup()
-            self._webui_site = web.TCPSite(self._webui_runner, "0.0.0.0", port)
+            self._webui_site = web.TCPSite(self._webui_runner, bind_addr, port)
             await self._webui_site.start()
             self._webui_port = port
-            local_ip = _get_local_ip()
-            token = self.config.get("stats_token", "")
-            token_param = f"?token={token}" if token else ""
-            logger.info(f"[API限频器] 统计面板已启动：http://localhost:{port}")
-            yield event.plain_result(
-                f"📊 统计面板已开启！\n"
-                f"🔗 本地访问：http://localhost:{port}{token_param}\n"
-                f"🔗 局域网：http://{local_ip}:{port}{token_param}\n"
-                f"发送「关闭统计面板」可关闭面板"
-            )
+            token = await self._get_stats_token()
+            logger.info(f"[API限频器] 统计面板已启动：http://localhost:{port}（绑定 {bind_addr}）")
+            if bind_addr == "0.0.0.0":
+                local_ip = _get_local_ip()
+                yield event.plain_result(
+                    f"📊 统计面板已开启！（局域网模式）\n"
+                    f"🔗 本地访问：http://localhost:{port}?token={token}\n"
+                    f"🔗 局域网：http://{local_ip}:{port}?token={token}\n"
+                    f"⚠️ 注意：当前已开放局域网访问，请确保防火墙已配置\n"
+                    f"发送「关闭统计面板」可关闭面板"
+                )
+            else:
+                yield event.plain_result(
+                    f"📊 统计面板已开启！\n"
+                    f"🔗 访问地址：http://localhost:{port}?token={token}\n"
+                    f"发送「关闭统计面板」可关闭面板"
+                )
         except OSError as e:
             self._webui_runner = None
             self._webui_site = None
