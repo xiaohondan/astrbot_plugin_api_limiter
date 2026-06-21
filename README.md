@@ -50,7 +50,8 @@
 ![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 
-主仓库在[NekoAiDev](github.com/NekoAiDev/astrbot_plugin_api_limiter)团队下，以后的插件都在[NekoAiDev](github.com/NekoAiDev)团队
+#### 主仓库在[NekoAiDev](github.com/NekoAiDev/astrbot_plugin_api_limiter)团队下，以后的插件都在[NekoAiDev](github.com/NekoAiDev)团队
+
 ---
 
 <details>
