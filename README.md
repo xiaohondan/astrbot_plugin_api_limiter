@@ -47,6 +47,8 @@
   </a>
 </p>
 
+[![GitHub](https://img.shields.io/badge/GitHub-NekoAiDev-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/NekoAiDev)
+
 ![:name](https://count.getloli.com/@小红蛋?name=%E5%B0%8F%E7%BA%A2%E8%9B%8B&theme=booru-lewd&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto)
 
 
