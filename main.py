@@ -194,7 +194,7 @@ def _generate_token(length: int = 32) -> str:
     "astrbot_plugin_api_limiter",
     "小红蛋",
     "多功能API调用管理插件，包含调用间隔限制、次数限制加冷却重开、安静时段定时切断、白/黑名单、分时段限频、群聊独立配额七大功能",
-    "2.4.8",
+    "2.4.9",
     "https://github.com/xiaohondan/astrbot_plugin_api_limiter",
 )
 class APIRateLimiter(Star):
